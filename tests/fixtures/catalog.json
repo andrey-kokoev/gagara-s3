@@ -1,0 +1,6 @@
+{
+  "tables": {
+    "users": "s3://example-bucket/data/users.parquet",
+    "events": "s3://example-bucket/data/events.csv"
+  }
+}

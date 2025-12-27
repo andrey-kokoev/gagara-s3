@@ -1,0 +1,1 @@
+// Catalog endpoint integration tests

@@ -1,0 +1,22 @@
+{
+  "name": "@gagara-s3/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "latest",
+    "pinia": "latest",
+    "highlight.js": "latest",
+    "@gagara-s3/client": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "vue-tsc": "latest"
+  }
+}

@@ -1,0 +1,1 @@
+// Catalog error API tests

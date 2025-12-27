@@ -1,0 +1,19 @@
+{
+  "name": "@gagara-s3/server",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler build",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "latest",
+    "@duckdb/wasm": "latest",
+    "@aws-sdk/client-s3": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "latest",
+    "typescript": "latest"
+  }
+}

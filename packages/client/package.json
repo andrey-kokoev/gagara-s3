@@ -1,0 +1,20 @@
+{
+  "name": "@gagara-s3/client",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "papaparse": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/papaparse": "latest"
+  }
+}

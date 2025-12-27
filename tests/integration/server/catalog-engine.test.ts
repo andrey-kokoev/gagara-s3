@@ -1,0 +1,1 @@
+// Catalog + DuckDB integration tests

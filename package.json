@@ -1,0 +1,28 @@
+{
+  "name": "gagara-s3",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @gagara-s3/server dev",
+    "dev:ui": "pnpm --filter @gagara-s3/ui dev",
+    "build": "pnpm --filter @gagara-s3/server build && pnpm --filter @gagara-s3/client build && pnpm --filter @gagara-s3/ui build",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "vitest": "latest",
+    "@vitest/ui": "latest",
+    "playwright": "latest",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "@typescript-eslint/parser": "latest",
+    "eslint": "latest"
+  }
+}

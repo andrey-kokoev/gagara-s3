@@ -1,0 +1,14 @@
+{
+  "tables": {
+    "table_001": "s3://example-bucket/data/table_001.parquet",
+    "table_002": "s3://example-bucket/data/table_002.parquet",
+    "table_003": "s3://example-bucket/data/table_003.parquet",
+    "table_004": "s3://example-bucket/data/table_004.parquet",
+    "table_005": "s3://example-bucket/data/table_005.parquet",
+    "table_006": "s3://example-bucket/data/table_006.parquet",
+    "table_007": "s3://example-bucket/data/table_007.parquet",
+    "table_008": "s3://example-bucket/data/table_008.parquet",
+    "table_009": "s3://example-bucket/data/table_009.parquet",
+    "table_010": "s3://example-bucket/data/table_010.parquet"
+  }
+}
