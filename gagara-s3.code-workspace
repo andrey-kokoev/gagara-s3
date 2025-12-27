@@ -1,0 +1,14 @@
+{
+	"folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../gagara-ui"
+    },
+    {
+      "path": "../gagara-boost"
+    }
+  ],
+  "settings": {}
+}
