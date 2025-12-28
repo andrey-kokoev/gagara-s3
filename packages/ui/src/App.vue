@@ -93,12 +93,12 @@
             </div>
           </label>
           <p class="hint">Relative to the configured bucket.</p>
-          <div class="catalog-actions">
+          <div v-if="hasTableInput" class="catalog-actions">
             <button
               class="primary"
               data-testid="save-table"
               @click="saveTable"
-              :disabled="addingTable || !clientReady"
+              :disabled="addingTable || !clientReady || !canSaveTable"
             >
               {{ addingTable ? "Saving..." : editingTableName ? "Save changes" : "Save table" }}
             </button>
@@ -231,6 +231,12 @@ const newTablePath = ref("")
 const tableError = ref("")
 const addingTable = ref(false)
 const editingTableName = ref<string | null>(null)
+const hasTableInput = computed(() => {
+  return Boolean(newTableName.value.trim() || newTablePath.value.trim())
+})
+const canSaveTable = computed(() => {
+  return Boolean(newTableName.value.trim() && newTablePath.value.trim())
+})
 
 const columns = computed(() => {
   if (rows.value.length === 0) {
