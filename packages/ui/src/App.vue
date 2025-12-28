@@ -927,7 +927,6 @@ td {
 th {
   font-size: 12px;
   color: var(--ui-text-muted);
-  text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
