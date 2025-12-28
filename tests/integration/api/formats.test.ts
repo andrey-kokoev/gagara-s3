@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { apiJson, apiRequest } from "../../helpers/api"
+import { pickFixtureTable } from "../../helpers/catalog"
 
 describe("integration/api/formats", () => {
   it("returns CSV when requested", async () => {
@@ -7,7 +8,7 @@ describe("integration/api/formats", () => {
     const tables = Object.keys(catalog.tables || {})
     expect(catalogRes.status).toBe(200)
     expect(tables.length).toBeGreaterThan(0)
-    const table = tables[0]
+    const table = pickFixtureTable(catalog)
 
     const res = await apiRequest(`/query?format=csv`, {
       method: "POST",

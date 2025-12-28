@@ -29,12 +29,8 @@ def _sql_error_code(message: str) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        config.require_env()
-        catalog.get_catalog()
-    except Exception:
-        # Defer failures to request time; startup shouldn't crash containers.
-        pass
+    config.require_env()
+    catalog.get_catalog()
     yield
 
 

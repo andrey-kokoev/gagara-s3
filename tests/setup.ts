@@ -48,11 +48,7 @@ function requireEnv(name: string) {
 }
 
 function resolveDataKey(key: string) {
-  const dir = (process.env.GAGARA_S3_DIR || "").trim().replace(/\/+$/, "")
-  if (!dir) {
-    return key
-  }
-  return `${dir}/${key.replace(/^\/+/, "")}`
+  return key.replace(/^\/+/, "")
 }
 
 function resolveCatalogKey(defaultCatalog: string) {

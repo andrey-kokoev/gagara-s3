@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { apiJson } from "../helpers/api"
+import { pickFixtureTable } from "../helpers/catalog"
 
 describe("e2e/basic-query", () => {
   it("runs a simple SELECT", async () => {
@@ -7,7 +8,7 @@ describe("e2e/basic-query", () => {
     const tables = Object.keys(catalog.tables || {})
     expect(tables.length).toBeGreaterThan(0)
 
-    const table = tables[0]
+    const table = pickFixtureTable(catalog)
     const { res, data } = await apiJson(`/query?format=json`, {
       method: "POST",
       body: JSON.stringify({ sql: `SELECT * FROM "${table}" LIMIT 1` })

@@ -44,7 +44,21 @@
           <li v-for="table in catalogEntries" :key="table.name" class="catalog-row">
             <button class="catalog-item" type="button" @click="appendTable(table.name)">
               <span>{{ table.name }}</span>
-              <span class="path">{{ table.path }}</span>
+              <span class="path" :title="table.path">{{ table.path }}</span>
+            </button>
+            <button
+              class="icon-button"
+              type="button"
+              @click="editTable(table)"
+              :disabled="addingTable"
+              aria-label="Edit table"
+              title="Edit table"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75L3 17.25zm17.71-10.04c.39-.39.39-1.02 0-1.41L18.2 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 2-2z"
+                />
+              </svg>
             </button>
             <button
               class="icon-button danger"
@@ -65,7 +79,7 @@
         <p v-if="!catalogLoading && catalogEntries.length === 0" class="muted">No tables available.</p>
 
         <div class="catalog-add">
-          <h3>Add table</h3>
+          <h3>{{ editingTableName ? "Edit table" : "Add table" }}</h3>
           <label>
             Name
             <input v-model="newTableName" type="text" placeholder="table_name" />
@@ -77,17 +91,19 @@
               <input v-model="newTablePath" type="text" placeholder="path/to/file.csv" />
             </div>
           </label>
-          <p class="hint">Relative to the configured bucket (and GAGARA_S3_DIR if set).</p>
+          <p class="hint">Relative to the configured bucket.</p>
           <div class="catalog-actions">
             <button
               class="primary"
               data-testid="save-table"
-              @click="addTable"
+              @click="saveTable"
               :disabled="addingTable || !clientReady"
             >
-              {{ addingTable ? "Saving..." : "Save table" }}
+              {{ addingTable ? "Saving..." : editingTableName ? "Save changes" : "Save table" }}
             </button>
-            <button class="ghost" @click="clearTableForm" :disabled="addingTable">Clear</button>
+            <button class="ghost" @click="clearTableForm" :disabled="addingTable">
+              {{ editingTableName ? "Cancel" : "Clear" }}
+            </button>
           </div>
           <p v-if="tableError" class="error">{{ tableError }}</p>
         </div>
@@ -202,6 +218,7 @@ const newTableName = ref("")
 const newTablePath = ref("")
 const tableError = ref("")
 const addingTable = ref(false)
+const editingTableName = ref<string | null>(null)
 
 const columns = computed(() => {
   if (rows.value.length === 0) {
@@ -240,10 +257,17 @@ async function loadCatalog() {
   }
 }
 
-async function addTable() {
+async function saveTable() {
   const activeClient = client.value
   if (!activeClient) {
     tableError.value = "Missing server URL or service token."
+    return
+  }
+
+  const nextName = newTableName.value.trim()
+  const nextPath = newTablePath.value.trim()
+  if (!nextName || !nextPath) {
+    tableError.value = "Table name and path are required."
     return
   }
 
@@ -251,10 +275,13 @@ async function addTable() {
   addingTable.value = true
 
   try {
-    const tables = await activeClient.addCatalogTable(
-      newTableName.value.trim(),
-      newTablePath.value.trim()
-    )
+    let tables: Record<string, string>
+    if (editingTableName.value && editingTableName.value !== nextName) {
+      await activeClient.deleteCatalogTable(editingTableName.value)
+      tables = await activeClient.addCatalogTable(nextName, nextPath)
+    } else {
+      tables = await activeClient.addCatalogTable(nextName, nextPath)
+    }
     catalogEntries.value = Object.entries(tables).map(([name, path]) => ({
       name,
       path,
@@ -290,10 +317,18 @@ async function deleteTable(name: string) {
   }
 }
 
+function editTable(table: { name: string; path: string }) {
+  newTableName.value = table.name
+  newTablePath.value = table.path
+  editingTableName.value = table.name
+  tableError.value = ""
+}
+
 function clearTableForm() {
   newTableName.value = ""
   newTablePath.value = ""
   tableError.value = ""
+  editingTableName.value = null
 }
 
 async function runQuery() {
@@ -676,6 +711,7 @@ h2 {
   padding: 10px;
   cursor: pointer;
   color: var(--ui-text);
+  overflow: hidden;
 }
 
 .catalog-item span {
@@ -686,6 +722,9 @@ h2 {
   font-size: 11px;
   color: var(--ui-text-muted);
   margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .catalog-add {

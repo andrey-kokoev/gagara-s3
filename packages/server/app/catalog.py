@@ -122,8 +122,7 @@ def add_table(name: str, path: str) -> dict[str, str]:
     tables = _load_catalog()
     normalized = path.strip()
     if not normalized.startswith("s3://"):
-        prefix = f"{config.S3_DIR}/" if config.S3_DIR else ""
-        normalized = f"s3://{config.S3_BUCKET}/{prefix}{normalized.lstrip('/')}"
+        normalized = f"s3://{config.S3_BUCKET}/{normalized.lstrip('/')}"
     tables[str(name)] = normalized
     _save_catalog(tables)
     _cached_catalog = tables
