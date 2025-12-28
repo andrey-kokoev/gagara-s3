@@ -38,7 +38,11 @@ def _register_tables(conn: duckdb.DuckDBPyConnection, tables: dict[str, str]) ->
     for alias, s3_path in tables.items():
         view_name = _quote_identifier(alias)
         source = _escape_literal(s3_path)
-        conn.execute(f"CREATE VIEW {view_name} AS SELECT * FROM '{source}'")
+        try:
+            conn.execute(f"CREATE VIEW {view_name} AS SELECT * FROM '{source}'")
+        except Exception:
+            # Skip tables with invalid sources so other queries can proceed.
+            continue
 
 
 def execute_query(sql: str, tables: dict[str, str]) -> list[dict]:

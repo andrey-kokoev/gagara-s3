@@ -110,21 +110,48 @@ async function ensureS3Fixtures() {
     }
   }
 
-  const catalog: { tables: Record<string, string> } = { tables: {} }
-
-  for (const table of fixtureTables) {
-    const objectKey = resolveDataKey(table.key)
-    catalog.tables[table.name] = `s3://${bucket}/${objectKey}`
+  let catalog: { tables: Record<string, string> } | null = null
+  try {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: catalogKey
+      })
+    )
+    const payload = await streamToString(response.Body)
+    const parsed = JSON.parse(payload)
+    if (parsed && typeof parsed === "object" && parsed.tables && typeof parsed.tables === "object") {
+      catalog = { tables: parsed.tables }
+    }
+  } catch (err: any) {
+    const status = err?.$metadata?.httpStatusCode
+    if (err?.name !== "NoSuchKey" && err?.name !== "NotFound" && status !== 404) {
+      throw err
+    }
   }
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: catalogKey,
-      Body: JSON.stringify(catalog, null, 2),
-      ContentType: "application/json"
-    })
-  )
+  const resolvedCatalog = catalog ?? { tables: {} }
+  let updated = false
+
+  for (const table of fixtureTables) {
+    if (resolvedCatalog.tables[table.name]) {
+      continue
+    }
+    const objectKey = resolveDataKey(table.key)
+    resolvedCatalog.tables[table.name] = `s3://${bucket}/${objectKey}`
+    updated = true
+  }
+
+  if (!catalog || updated) {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: catalogKey,
+        Body: JSON.stringify(resolvedCatalog, null, 2),
+        ContentType: "application/json"
+      })
+    )
+  }
 }
 
 async function refreshServerCatalog() {
