@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     testTimeout: 20000,
     setupFiles: ['tests/setup.ts'],
+    globalSetup: ['tests/global-setup.ts'],
     include: ['tests/**/*.test.ts'],
     reporters: ['verbose', 'hanging-process'],
     slowTestThreshold: 500

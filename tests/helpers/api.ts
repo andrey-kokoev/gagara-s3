@@ -16,6 +16,12 @@ export function requireApiConfig() {
 type RequestOptions = {
   includeAuth?: boolean
   timeoutMs?: number
+  retries?: number
+  retryDelayMs?: number
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function apiRequest(
@@ -26,7 +32,9 @@ export async function apiRequest(
   const { baseUrl: resolvedBaseUrl, token: resolvedToken } = requireApiConfig()
   const headers = new Headers(init.headers)
   const includeAuth = options.includeAuth ?? true
-  const timeoutMs = options.timeoutMs ?? 15000
+  const timeoutMs = options.timeoutMs ?? 30000
+  const retries = options.retries ?? 2
+  const retryDelayMs = options.retryDelayMs ?? 1000
 
   if (includeAuth && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${resolvedToken}`)
@@ -35,18 +43,28 @@ export async function apiRequest(
     headers.set("Content-Type", "application/json")
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    return await fetch(`${resolvedBaseUrl}${path}`, {
-      ...init,
-      headers,
-      signal: controller.signal
-    })
-  } finally {
-    clearTimeout(timeout)
+  let lastError: unknown
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(`${resolvedBaseUrl}${path}`, {
+        ...init,
+        headers,
+        signal: controller.signal
+      })
+    } catch (err) {
+      lastError = err
+      if (attempt < retries) {
+        await sleep(retryDelayMs)
+        continue
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
   }
+
+  throw lastError
 }
 
 export async function apiJson(
