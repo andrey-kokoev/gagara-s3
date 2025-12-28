@@ -790,6 +790,8 @@ h2 {
 
 .results .table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
 }
 
 table {
