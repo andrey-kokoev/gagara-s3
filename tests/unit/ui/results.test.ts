@@ -72,4 +72,37 @@ describe("ui/results", () => {
 
     expect(global.URL.createObjectURL).toHaveBeenCalledOnce()
   })
+
+  it("cancels an in-flight query", async () => {
+    global.fetch = vi.fn((url: RequestInfo, init?: RequestInit) => {
+      if (String(url).includes("/query")) {
+        return new Promise((_, reject) => {
+          const signal = init?.signal
+          if (signal) {
+            signal.addEventListener("abort", () => {
+              const err = new Error("Aborted")
+              ;(err as Error).name = "AbortError"
+              reject(err)
+            })
+          }
+        })
+      }
+      return Promise.resolve(jsonResponse({ tables: {} }))
+    })
+
+    const { default: App } = await import("../../../packages/ui/src/App.vue")
+    const wrapper = mount(App)
+
+    await wrapper.get("[data-testid=\"run-query\"]").trigger("click")
+    await nextTick()
+
+    const cancelButton = wrapper.find(".loading-row .ghost")
+    expect(cancelButton.exists()).toBe(true)
+
+    await cancelButton.trigger("click")
+    await flushPromises()
+    await nextTick()
+
+    expect(wrapper.text()).toContain("Query cancelled.")
+  })
 })

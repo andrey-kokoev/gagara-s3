@@ -366,21 +366,34 @@ async function runQuery() {
       format: format.value,
       signal: controller.signal,
     })
+    if (controller.signal.aborted || activeQuery.value !== controller) {
+      return
+    }
     rows.value = data
   } catch (err) {
     if ((err as Error).name === "AbortError") {
-      error.value = "Query cancelled."
+      if (activeQuery.value === controller) {
+        error.value = "Query cancelled."
+      }
       return
     }
     error.value = (err as Error).message || "Query failed"
   } finally {
-    loading.value = false
-    activeQuery.value = null
+    if (activeQuery.value === controller) {
+      loading.value = false
+      activeQuery.value = null
+    }
   }
 }
 
 function cancelQuery() {
-  activeQuery.value?.abort()
+  if (!activeQuery.value) {
+    return
+  }
+  activeQuery.value.abort()
+  activeQuery.value = null
+  loading.value = false
+  error.value = "Query cancelled."
 }
 
 function appendTable(name: string) {
