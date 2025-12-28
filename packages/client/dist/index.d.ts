@@ -56,6 +56,7 @@ export declare class GagaraHttpError extends Error {
 
 export declare interface QueryOptions {
     format?: GagaraFormat;
+    signal?: AbortSignal;
 }
 
 export declare interface QueryRequest {

@@ -1,6 +1,7 @@
 <template>
-  <div class="page">
-    <header class="hero">
+  <div class="viewport">
+    <div class="page">
+      <header class="hero">
       <div>
         <p class="eyebrow">SQL over S3</p>
         <h1>gagara-s3 console</h1>
@@ -27,9 +28,9 @@
           <p class="status-meta">Token: {{ tokenSource }}</p>
         </div>
       </div>
-    </header>
+      </header>
 
-    <main class="grid">
+      <main class="grid">
       <aside class="panel catalog">
         <div class="panel-header">
           <h2>Catalog</h2>
@@ -181,7 +182,8 @@
           </div>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   </div>
 </template>
 
@@ -480,6 +482,13 @@ function clearToken() {
   box-sizing: border-box;
 }
 
+.viewport {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .page {
   padding: 32px 40px 64px;
   max-width: 1200px;
@@ -588,12 +597,14 @@ h1 {
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 24px;
+  min-width: 0;
 }
 
 .stack {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .panel {

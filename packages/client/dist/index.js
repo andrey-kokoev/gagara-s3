@@ -37,6 +37,7 @@ class d {
       headers: {
         "Content-Type": "application/json"
       },
+      signal: r.signal,
       body: JSON.stringify({ sql: t })
     });
     if (s === "csv") {
