@@ -58,8 +58,12 @@
           </label>
           <label>
             Path
-            <input v-model="newTablePath" type="text" placeholder="s3://bucket/path/file.csv" />
+            <div class="path-input">
+              <span class="path-prefix">/</span>
+              <input v-model="newTablePath" type="text" placeholder="path/to/file.csv" />
+            </div>
           </label>
+          <p class="hint">Relative to the configured bucket (and GAGARA_S3_DIR if set).</p>
           <div class="catalog-actions">
             <button
               class="primary"
@@ -640,6 +644,23 @@ h2 {
   border: 1px solid #c3d0c6;
   background: #fefcf7;
   font-size: 12px;
+}
+
+.path-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.path-prefix {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: #3b5650;
+  padding: 6px 0;
+}
+
+.path-input input {
+  flex: 1;
 }
 
 .catalog-actions {
