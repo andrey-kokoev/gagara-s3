@@ -8,6 +8,9 @@
     },
     {
       "path": "../gagara-boost"
+    },
+    {
+      "path": "../smart-scheduling"
     }
   ],
   "settings": {}

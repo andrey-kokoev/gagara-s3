@@ -1,0 +1,64 @@
+:root {
+  --color-selective-yellow-50: #fffaeb;
+  --color-selective-yellow-100: #fff2c6;
+  --color-selective-yellow-200: #ffe388;
+  --color-selective-yellow-300: #ffcf4a;
+  --color-selective-yellow-400: #ffb81c;
+  --color-selective-yellow-500: #f99707;
+  --color-selective-yellow-600: #dd7002;
+  --color-selective-yellow-700: #b74d06;
+  --color-selective-yellow-800: #943a0c;
+  --color-selective-yellow-900: #7a300d;
+  --color-selective-yellow-950: #461802;
+
+  --color-sorbus-50: #fff9ec;
+  --color-sorbus-100: #fff3d3;
+  --color-sorbus-200: #ffe3a5;
+  --color-sorbus-300: #ffcd6d;
+  --color-sorbus-400: #ffab32;
+  --color-sorbus-500: #ff900a;
+  --color-sorbus-600: #ff7800;
+  --color-sorbus-700: #cc5702;
+  --color-sorbus-800: #a1430b;
+  --color-sorbus-900: #82390c;
+  --color-sorbus-950: #461a04;
+
+  --color-pearl-bush-50: #f9f7f3;
+  --color-pearl-bush-100: #f1ede3;
+  --color-pearl-bush-200: #e7dfcf;
+  --color-pearl-bush-300: #d0bfa1;
+  --color-pearl-bush-400: #bca17b;
+  --color-pearl-bush-500: #ae8b61;
+  --color-pearl-bush-600: #a17955;
+  --color-pearl-bush-700: #866248;
+  --color-pearl-bush-800: #6d503f;
+  --color-pearl-bush-900: #594335;
+  --color-pearl-bush-950: #2f221b;
+
+  --color-black-50: #e6e6e6;
+  --color-black-100: #cccccc;
+  --color-black-200: #999999;
+  --color-black-300: #666666;
+  --color-black-400: #333333;
+  --color-black-500: #000000;
+  --color-black-600: #000000;
+  --color-black-700: #000000;
+  --color-black-800: #000000;
+  --color-black-900: #000000;
+  --color-black-950: #000000;
+
+  --ui-primary: var(--color-selective-yellow-300);
+  --ui-secondary: var(--color-sorbus-300);
+  --ui-success: var(--color-selective-yellow-200);
+  --ui-info: var(--color-sorbus-200);
+  --ui-warning: var(--color-selective-yellow-400);
+  --ui-error: var(--color-sorbus-400);
+  --ui-neutral: var(--color-pearl-bush-300);
+  --ui-bg: #0b0d10;
+  --ui-surface: #12161b;
+  --ui-surface-muted: #171d22;
+  --ui-text: var(--color-pearl-bush-100);
+  --ui-text-muted: #9fb1aa;
+  --ui-border: #2a343b;
+  --ui-text-on-primary: var(--color-black-500);
+}

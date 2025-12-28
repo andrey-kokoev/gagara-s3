@@ -47,6 +47,14 @@ function requireEnv(name: string) {
   return value
 }
 
+function resolveDataKey(key: string) {
+  const dir = (process.env.GAGARA_S3_DIR || "").trim().replace(/\/+$/, "")
+  if (!dir) {
+    return key
+  }
+  return `${dir}/${key.replace(/^\/+/, "")}`
+}
+
 function resolveCatalogKey(defaultCatalog: string) {
   const dir = (process.env.GAGARA_S3_DIR || "").trim().replace(/\/+$/, "")
   if (!dir) {
@@ -83,8 +91,9 @@ async function ensureS3Fixtures() {
   })
 
   for (const table of fixtureTables) {
+    const objectKey = resolveDataKey(table.key)
     try {
-      await client.send(new HeadObjectCommand({ Bucket: bucket, Key: table.key }))
+      await client.send(new HeadObjectCommand({ Bucket: bucket, Key: objectKey }))
     } catch (err: any) {
       const status = err?.$metadata?.httpStatusCode
       if (err?.name !== "NotFound" && status !== 404) {
@@ -93,7 +102,7 @@ async function ensureS3Fixtures() {
       await client.send(
         new PutObjectCommand({
           Bucket: bucket,
-          Key: table.key,
+          Key: objectKey,
           Body: table.csv,
           ContentType: "text/csv"
         })
@@ -101,28 +110,11 @@ async function ensureS3Fixtures() {
     }
   }
 
-  let catalog: { tables: Record<string, string> } = { tables: {} }
-  try {
-    const response = await client.send(
-      new GetObjectCommand({
-        Bucket: bucket,
-        Key: catalogKey
-      })
-    )
-    const payload = await streamToString(response.Body)
-    const parsed = JSON.parse(payload)
-    if (parsed && typeof parsed === "object" && parsed.tables && typeof parsed.tables === "object") {
-      catalog.tables = parsed.tables
-    }
-  } catch (err: any) {
-    const status = err?.$metadata?.httpStatusCode
-    if (err?.name !== "NoSuchKey" && err?.name !== "NotFound" && status !== 404) {
-      throw err
-    }
-  }
+  const catalog: { tables: Record<string, string> } = { tables: {} }
 
   for (const table of fixtureTables) {
-    catalog.tables[table.name] = `s3://${bucket}/${table.key}`
+    const objectKey = resolveDataKey(table.key)
+    catalog.tables[table.name] = `s3://${bucket}/${objectKey}`
   }
 
   await client.send(
@@ -135,5 +127,22 @@ async function ensureS3Fixtures() {
   )
 }
 
+async function refreshServerCatalog() {
+  const baseUrl = requireEnv("GAGARA_S3_SERVER_URL").replace(/\/$/, "")
+  const token = requireEnv("GAGARA_S3_SERVICE_TOKEN")
+
+  const res = await fetch(`${baseUrl}/refresh-catalog`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+
+  if (!res.ok) {
+    throw new Error(`Failed to refresh catalog: ${res.status}`)
+  }
+}
+
 await ensureLocalFixtures()
 await ensureS3Fixtures()
+await refreshServerCatalog()
