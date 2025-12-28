@@ -216,7 +216,7 @@ const client = computed(() =>
 )
 const clientReady = computed(() => Boolean(client.value))
 
-const sql = ref("SELECT * FROM users LIMIT 50")
+const sql = ref("SELECT * FROM classes LIMIT 10")
 const format = ref<"json" | "csv">("json")
 const rows = ref<Array<Record<string, unknown>>>([])
 const error = ref("")
@@ -909,8 +909,9 @@ h2 {
 }
 
 table {
-  width: 100%;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -920,8 +921,6 @@ td {
   border-bottom: 1px solid #d4ded7;
   padding: 8px;
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
