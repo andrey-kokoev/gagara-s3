@@ -319,9 +319,17 @@ async function deleteTable(name: string) {
 
 function editTable(table: { name: string; path: string }) {
   newTableName.value = table.name
-  newTablePath.value = table.path
+  newTablePath.value = normalizePathForEdit(table.path)
   editingTableName.value = table.name
   tableError.value = ""
+}
+
+function normalizePathForEdit(path: string) {
+  const trimmed = path.trim()
+  if (trimmed.startsWith("s3://")) {
+    return trimmed.replace(/^s3:\/\/[^/]+\/?/, "")
+  }
+  return trimmed.replace(/^\/+/, "")
 }
 
 function clearTableForm() {
