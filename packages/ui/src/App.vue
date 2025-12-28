@@ -602,6 +602,7 @@ h1 {
   border: 1px solid color-mix(in srgb, var(--ui-border) 80%, #000 20%);
   padding: 20px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  min-width: 0;
 }
 
 .panel-header {
@@ -716,11 +717,11 @@ h2 {
 .editor-blocker {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--ui-surface) 70%, #000 30%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2;
+  pointer-events: none;
 }
 
 .spinner {
@@ -872,6 +873,22 @@ h2 {
   overflow-x: auto;
   overflow-y: auto;
   max-height: 420px;
+  max-width: 100%;
+}
+
+.results .table-wrap::after {
+  content: "Scroll horizontally to see more columns";
+  display: block;
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  padding: 6px 2px 0;
+}
+
+@media (min-width: 900px) {
+  .results .table-wrap::after {
+    content: "";
+    padding: 0;
+  }
 }
 
 .loading-row {
@@ -882,6 +899,7 @@ h2 {
 
 table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -891,6 +909,9 @@ td {
   border-bottom: 1px solid #d4ded7;
   padding: 8px;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 th {
