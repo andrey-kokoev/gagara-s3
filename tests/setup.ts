@@ -3,6 +3,7 @@ import fs from "node:fs/promises"
 import { Readable } from "node:stream"
 import { config } from "dotenv"
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { afterAll } from "vitest"
 
 const rootEnv = path.join(process.cwd(), ".env")
 const uiEnv = path.join(process.cwd(), "packages", "ui", ".env")
@@ -166,6 +167,73 @@ async function refreshServerCatalog() {
   }
 }
 
+async function cleanupCatalogFixtures() {
+  const bucket = requireEnv("GAGARA_S3_BUCKET")
+  const region = process.env.GAGARA_S3_REGION || "auto"
+  const endpoint = process.env.GAGARA_S3_ENDPOINT_URL || undefined
+  const accessKeyId = requireEnv("GAGARA_S3_ACCESS_KEY_ID")
+  const secretAccessKey = requireEnv("GAGARA_S3_SECRET_ACCESS_KEY")
+  const catalogKey = resolveCatalogKey(requireEnv("GAGARA_S3_DEFAULT_CATALOG"))
+
+  const client = new S3Client({
+    region,
+    endpoint,
+    forcePathStyle: Boolean(endpoint),
+    credentials: { accessKeyId, secretAccessKey }
+  })
+
+  let catalog: { tables: Record<string, string> } | null = null
+  try {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: catalogKey
+      })
+    )
+    const payload = await streamToString(response.Body)
+    const parsed = JSON.parse(payload)
+    if (parsed && typeof parsed === "object" && parsed.tables && typeof parsed.tables === "object") {
+      catalog = { tables: parsed.tables }
+    }
+  } catch (err: any) {
+    const status = err?.$metadata?.httpStatusCode
+    if (err?.name !== "NoSuchKey" && err?.name !== "NotFound" && status !== 404) {
+      throw err
+    }
+  }
+
+  if (!catalog) {
+    return
+  }
+
+  let removed = false
+  for (const table of fixtureTables) {
+    if (table.name in catalog.tables) {
+      delete catalog.tables[table.name]
+      removed = true
+    }
+  }
+
+  if (!removed) {
+    return
+  }
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: catalogKey,
+      Body: JSON.stringify(catalog, null, 2),
+      ContentType: "application/json"
+    })
+  )
+
+  await refreshServerCatalog()
+}
+
 await ensureLocalFixtures()
 await ensureS3Fixtures()
 await refreshServerCatalog()
+
+afterAll(async () => {
+  await cleanupCatalogFixtures()
+})
