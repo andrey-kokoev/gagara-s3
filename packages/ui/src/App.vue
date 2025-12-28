@@ -137,8 +137,12 @@
               spellcheck="false"
               placeholder="SELECT * FROM users LIMIT 50"
               @keydown.ctrl.enter.prevent="runQuery"
+              :disabled="loading"
             ></textarea>
             <pre class="editor-preview" v-html="highlightedSql"></pre>
+            <div v-if="loading" class="editor-blocker" aria-hidden="true">
+              <span class="spinner" aria-hidden="true"></span>
+            </div>
           </div>
           <p class="hint">Tip: Click a catalog table to insert its name.</p>
         </div>
@@ -694,6 +698,10 @@ h2 {
   outline: none;
 }
 
+.editor-input:disabled {
+  cursor: not-allowed;
+}
+
 .editor-preview {
   margin: 0;
   padding: 16px;
@@ -703,6 +711,25 @@ h2 {
   color: var(--ui-text);
   white-space: pre-wrap;
   pointer-events: none;
+}
+
+.editor-blocker {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--ui-surface) 70%, #000 30%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid color-mix(in srgb, var(--ui-border) 70%, transparent 30%);
+  border-top-color: var(--ui-primary);
+  animation: spin 0.9s linear infinite;
 }
 
 :deep(.hljs-keyword) {
@@ -894,6 +921,12 @@ th {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
