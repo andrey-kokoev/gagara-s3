@@ -7,5 +7,6 @@ describe("server/handlers", () => {
     expect(source).toContain("@app.post(\"/query\")")
     expect(source).toContain("@app.get(\"/catalog\")")
     expect(source).toContain("@app.post(\"/refresh-catalog\")")
+    expect(source).toContain("@app.post(\"/catalog/tables\")")
   })
 })

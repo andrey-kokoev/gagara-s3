@@ -29,6 +29,7 @@ S3_SECRET_ACCESS_KEY = os.getenv("GAGARA_S3_SECRET_ACCESS_KEY", "").strip()
 S3_ENDPOINT_URL: Optional[str] = os.getenv("GAGARA_S3_ENDPOINT_URL", "").strip() or None
 
 DEFAULT_CATALOG = os.getenv("GAGARA_S3_DEFAULT_CATALOG", "").strip()
+S3_DIR = os.getenv("GAGARA_S3_DIR", "").strip().strip("/")
 NODE_ENV = os.getenv("NODE_ENV", "development").strip()
 
 

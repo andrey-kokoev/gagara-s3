@@ -25,6 +25,12 @@ export interface RefreshCatalogResponse {
   tables: Record<string, string>
 }
 
+export interface AddCatalogTableResponse {
+  status: 'ok'
+  message: string
+  tables: Record<string, string>
+}
+
 export interface GagaraErrorResponse {
   error: string
   code: string

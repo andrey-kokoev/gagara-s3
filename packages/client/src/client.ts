@@ -5,6 +5,7 @@ import type {
   QueryResponse,
   CatalogResponse,
   RefreshCatalogResponse,
+  AddCatalogTableResponse,
   GagaraErrorResponse,
 } from './types'
 import { GagaraError, GagaraHttpError } from './utils/errors'
@@ -88,5 +89,16 @@ export class GagaraClient {
       method: 'POST',
     })
     return (result as RefreshCatalogResponse).tables
+  }
+
+  async addCatalogTable (name: string, path: string): Promise<Record<string, string>> {
+    const result = await this.request<AddCatalogTableResponse>('/catalog/tables', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, path }),
+    })
+    return (result as AddCatalogTableResponse).tables
   }
 }

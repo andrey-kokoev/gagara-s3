@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app import auth, catalog, config, engine
-from app.models import QueryRequest
+from app.models import CatalogEntryRequest, QueryRequest
 
 
 def _error_response(status_code: int, code: str, message: str, hint: str | None = None) -> JSONResponse:
@@ -96,6 +96,25 @@ async def refresh_catalog(_token: str = Depends(auth.verify_token)):
         return _error_response(500, "CATALOG_ERROR", exc.args[0], hint)
 
     return JSONResponse({"status": "ok", "message": "Catalog refreshed", "tables": tables})
+
+
+@app.post("/catalog/tables")
+async def add_catalog_table(
+    request: CatalogEntryRequest,
+    _token: str = Depends(auth.verify_token),
+):
+    name = request.name.strip()
+    path = request.path.strip()
+    if not name or not path:
+        return _error_response(400, "CATALOG_ERROR", "Table name and path are required")
+
+    try:
+        tables = catalog.add_table(name, path)
+    except catalog.CatalogError as exc:
+        hint = str(exc) if _is_dev() else None
+        return _error_response(500, "CATALOG_ERROR", exc.args[0], hint)
+
+    return JSONResponse({"status": "ok", "message": "Table added", "tables": tables})
 
 
 def _rows_to_csv(rows: list[dict]) -> str:

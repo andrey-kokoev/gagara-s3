@@ -47,6 +47,14 @@ function requireEnv(name: string) {
   return value
 }
 
+function resolveCatalogKey(defaultCatalog: string) {
+  const dir = (process.env.GAGARA_S3_DIR || "").trim().replace(/\/+$/, "")
+  if (!dir) {
+    return defaultCatalog
+  }
+  return `${dir}/${defaultCatalog.replace(/^\/+/, "")}`
+}
+
 function streamToString(stream: unknown): Promise<string> {
   if (!(stream instanceof Readable)) {
     return Promise.resolve("")
@@ -65,7 +73,7 @@ async function ensureS3Fixtures() {
   const endpoint = process.env.GAGARA_S3_ENDPOINT_URL || undefined
   const accessKeyId = requireEnv("GAGARA_S3_ACCESS_KEY_ID")
   const secretAccessKey = requireEnv("GAGARA_S3_SECRET_ACCESS_KEY")
-  const catalogKey = requireEnv("GAGARA_S3_DEFAULT_CATALOG")
+  const catalogKey = resolveCatalogKey(requireEnv("GAGARA_S3_DEFAULT_CATALOG"))
 
   const client = new S3Client({
     region,

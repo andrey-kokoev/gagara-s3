@@ -43,7 +43,7 @@ describe("ui/editor", () => {
     const { default: App } = await import("../../../packages/ui/src/App.vue")
     const wrapper = mount(App)
 
-    await wrapper.get("button.primary").trigger("click")
+    await wrapper.get("[data-testid=\"run-query\"]").trigger("click")
     await flushPromises()
 
     expect(global.fetch).toHaveBeenCalled()
@@ -54,7 +54,7 @@ describe("ui/editor", () => {
 
     const { default: App } = await import("../../../packages/ui/src/App.vue")
     const wrapper = mount(App)
-    const button = wrapper.get("button.primary")
+    const button = wrapper.get("[data-testid=\"run-query\"]")
 
     await button.trigger("click")
 

@@ -40,7 +40,7 @@ describe("ui/results", () => {
     const { default: App } = await import("../../../packages/ui/src/App.vue")
     const wrapper = mount(App)
 
-    await wrapper.get("button.primary").trigger("click")
+    await wrapper.get("[data-testid=\"run-query\"]").trigger("click")
     await flushPromises()
     await nextTick()
 
@@ -66,7 +66,7 @@ describe("ui/results", () => {
     const { default: App } = await import("../../../packages/ui/src/App.vue")
     const wrapper = mount(App)
 
-    await wrapper.get("button.primary").trigger("click")
+    await wrapper.get("[data-testid=\"run-query\"]").trigger("click")
     await flushPromises()
     await wrapper.get(".results .ghost").trigger("click")
 

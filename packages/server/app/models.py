@@ -15,3 +15,8 @@ class ErrorResponse(BaseModel):
     error: str
     code: str
     details: dict | None = None
+
+
+class CatalogEntryRequest(BaseModel):
+    name: str
+    path: str

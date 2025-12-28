@@ -39,25 +39,50 @@ def _parse_catalog(payload: str) -> dict[str, str]:
     return {str(key): str(value) for key, value in tables.items()}
 
 
+def _resolve_catalog_key() -> str:
+    if not config.DEFAULT_CATALOG:
+        return ""
+    if config.S3_DIR:
+        return f"{config.S3_DIR}/{config.DEFAULT_CATALOG.lstrip('/')}"
+    return config.DEFAULT_CATALOG
+
+
 def _create_empty_catalog() -> dict[str, str]:
+    key = _resolve_catalog_key()
+    if not key:
+        raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
     payload = json.dumps({"tables": {}}, indent=2)
     _s3_client().put_object(
         Bucket=config.S3_BUCKET,
-        Key=config.DEFAULT_CATALOG,
+        Key=key,
         Body=payload.encode("utf-8"),
         ContentType="application/json",
     )
     return {}
 
 
+def _save_catalog(tables: dict[str, str]) -> None:
+    key = _resolve_catalog_key()
+    if not key:
+        raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
+    payload = json.dumps({"tables": tables}, indent=2)
+    _s3_client().put_object(
+        Bucket=config.S3_BUCKET,
+        Key=key,
+        Body=payload.encode("utf-8"),
+        ContentType="application/json",
+    )
+
+
 def _load_catalog() -> dict[str, str]:
     if not config.DEFAULT_CATALOG:
         raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
 
+    key = _resolve_catalog_key()
     try:
         response = _s3_client().get_object(
             Bucket=config.S3_BUCKET,
-            Key=config.DEFAULT_CATALOG,
+            Key=key,
         )
     except ClientError as exc:
         error = exc.response.get("Error", {}) if hasattr(exc, "response") else {}
@@ -87,3 +112,15 @@ def refresh_catalog() -> dict[str, str]:
     global _cached_catalog
     _cached_catalog = _load_catalog()
     return _cached_catalog
+
+
+def add_table(name: str, path: str) -> dict[str, str]:
+    if not name or not path:
+        raise CatalogError("Table name and path are required")
+
+    global _cached_catalog
+    tables = _load_catalog()
+    tables[str(name)] = str(path)
+    _save_catalog(tables)
+    _cached_catalog = tables
+    return tables

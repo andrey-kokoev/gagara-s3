@@ -11,6 +11,21 @@
           {{ clientReady ? "Client ready" : "Missing env config" }}
         </span>
         <p class="status-meta">API: {{ baseUrl || "unset" }}</p>
+        <div class="token-input">
+          <label for="service-token">Service token</label>
+          <div class="token-row">
+            <input
+              id="service-token"
+              v-model="tokenInput"
+              type="password"
+              placeholder="Paste GAGARA_S3_SERVICE_TOKEN"
+              autocomplete="off"
+            />
+            <button class="ghost" @click="saveToken">Save</button>
+            <button class="ghost danger" @click="clearToken" :disabled="!tokenInput">Clear</button>
+          </div>
+          <p class="status-meta">Token: {{ tokenSource }}</p>
+        </div>
       </div>
     </header>
 
@@ -34,6 +49,30 @@
           </li>
         </ul>
         <p v-if="!catalogLoading && catalogEntries.length === 0" class="muted">No tables available.</p>
+
+        <div class="catalog-add">
+          <h3>Add table</h3>
+          <label>
+            Name
+            <input v-model="newTableName" type="text" placeholder="table_name" />
+          </label>
+          <label>
+            Path
+            <input v-model="newTablePath" type="text" placeholder="s3://bucket/path/file.csv" />
+          </label>
+          <div class="catalog-actions">
+            <button
+              class="primary"
+              data-testid="save-table"
+              @click="addTable"
+              :disabled="addingTable || !clientReady"
+            >
+              {{ addingTable ? "Saving..." : "Save table" }}
+            </button>
+            <button class="ghost" @click="clearTableForm" :disabled="addingTable">Clear</button>
+          </div>
+          <p v-if="tableError" class="error">{{ tableError }}</p>
+        </div>
       </aside>
 
       <section class="stack">
@@ -45,7 +84,12 @@
                 <option value="json">json</option>
                 <option value="csv">csv</option>
               </select>
-              <button class="primary" @click="runQuery" :disabled="loading || !clientReady">
+              <button
+                class="primary"
+                data-testid="run-query"
+                @click="runQuery"
+                :disabled="loading || !clientReady"
+              >
                 {{ loading ? "Running..." : "Run query" }}
               </button>
             </div>
@@ -108,13 +152,24 @@ hljs.registerLanguage("sql", sqlLang)
 
 const baseUrl =
   import.meta.env.GAGARA_S3_SERVER_URL || import.meta.env.VITE_GAGARA_SERVER_URL || ""
-const token =
+const envToken =
   import.meta.env.GAGARA_S3_SERVICE_TOKEN ||
   import.meta.env.VITE_GAGARA_SERVICE_TOKEN ||
   ""
+const tokenStorageKey = "gagara_s3_service_token"
+const tokenInput = ref("")
+const token = computed(() => tokenInput.value || envToken)
+const tokenSource = computed(() => {
+  if (tokenInput.value) {
+    return "local"
+  }
+  return envToken ? "env" : "missing"
+})
 
-const client = baseUrl && token ? new GagaraClient({ baseUrl, token }) : null
-const clientReady = computed(() => Boolean(client))
+const client = computed(() =>
+  baseUrl && token.value ? new GagaraClient({ baseUrl, token: token.value }) : null
+)
+const clientReady = computed(() => Boolean(client.value))
 
 const sql = ref("SELECT * FROM users LIMIT 50")
 const format = ref<"json" | "csv">("json")
@@ -125,6 +180,10 @@ const loading = ref(false)
 const catalogEntries = ref<Array<{ name: string; path: string }>>([])
 const catalogLoading = ref(false)
 const catalogError = ref("")
+const newTableName = ref("")
+const newTablePath = ref("")
+const tableError = ref("")
+const addingTable = ref(false)
 
 const columns = computed(() => {
   if (rows.value.length === 0) {
@@ -141,8 +200,9 @@ const highlightedSql = computed(() => {
 })
 
 async function loadCatalog() {
-  if (!client) {
-    catalogError.value = "Missing VITE_GAGARA_SERVER_URL or VITE_GAGARA_SERVICE_TOKEN."
+  const activeClient = client.value
+  if (!activeClient) {
+    catalogError.value = "Missing server URL or service token."
     return
   }
 
@@ -150,7 +210,7 @@ async function loadCatalog() {
   catalogError.value = ""
 
   try {
-    const tables = await client.getCatalog()
+    const tables = await activeClient.getCatalog()
     catalogEntries.value = Object.entries(tables).map(([name, path]) => ({
       name,
       path,
@@ -162,9 +222,43 @@ async function loadCatalog() {
   }
 }
 
+async function addTable() {
+  const activeClient = client.value
+  if (!activeClient) {
+    tableError.value = "Missing server URL or service token."
+    return
+  }
+
+  tableError.value = ""
+  addingTable.value = true
+
+  try {
+    const tables = await activeClient.addCatalogTable(
+      newTableName.value.trim(),
+      newTablePath.value.trim()
+    )
+    catalogEntries.value = Object.entries(tables).map(([name, path]) => ({
+      name,
+      path,
+    }))
+    clearTableForm()
+  } catch (err) {
+    tableError.value = (err as Error).message || "Failed to add table"
+  } finally {
+    addingTable.value = false
+  }
+}
+
+function clearTableForm() {
+  newTableName.value = ""
+  newTablePath.value = ""
+  tableError.value = ""
+}
+
 async function runQuery() {
-  if (!client) {
-    error.value = "Missing VITE_GAGARA_SERVER_URL or VITE_GAGARA_SERVICE_TOKEN."
+  const activeClient = client.value
+  if (!activeClient) {
+    error.value = "Missing server URL or service token."
     return
   }
 
@@ -172,7 +266,7 @@ async function runQuery() {
   loading.value = true
 
   try {
-    const data = await client.query(sql.value, { format: format.value })
+    const data = await activeClient.query(sql.value, { format: format.value })
     rows.value = data
   } catch (err) {
     error.value = (err as Error).message || "Query failed"
@@ -215,8 +309,37 @@ function escapeCsv(value: unknown) {
 }
 
 onMounted(() => {
+  try {
+    const stored = localStorage.getItem(tokenStorageKey)
+    if (stored) {
+      tokenInput.value = stored
+    }
+  } catch {
+    tokenInput.value = ""
+  }
   loadCatalog()
 })
+
+function saveToken() {
+  try {
+    if (tokenInput.value) {
+      localStorage.setItem(tokenStorageKey, tokenInput.value)
+    } else {
+      localStorage.removeItem(tokenStorageKey)
+    }
+  } catch {
+    return
+  }
+}
+
+function clearToken() {
+  tokenInput.value = ""
+  try {
+    localStorage.removeItem(tokenStorageKey)
+  } catch {
+    return
+  }
+}
 </script>
 
 <style scoped>
@@ -297,6 +420,40 @@ h1 {
 .pill.warn {
   background: #ffe3c0;
   border-color: #f2b268;
+}
+
+.token-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.token-input label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #42655c;
+}
+
+.token-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.token-row input {
+  width: 220px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #c3d0c6;
+  background: #fefcf7;
+  font-size: 12px;
+}
+
+.ghost.danger {
+  border-color: #f2b8aa;
+  color: #7a2515;
 }
 
 .grid {
@@ -453,6 +610,41 @@ h2 {
   font-size: 11px;
   color: #587069;
   margin-top: 4px;
+}
+
+.catalog-add {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #d4ded7;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalog-add h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.catalog-add label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #3b5650;
+}
+
+.catalog-add input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #c3d0c6;
+  background: #fefcf7;
+  font-size: 12px;
+}
+
+.catalog-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .results .table-wrap {
