@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @gagara-s3/server dev",
     "dev:ui": "pnpm --filter @gagara-s3/ui dev",
-    "build": "pnpm --filter @gagara-s3/server build && pnpm --filter @gagara-s3/client build && pnpm --filter @gagara-s3/ui build",
+    "build": "bash -lc 'cd packages/server && railway up' && pnpm --filter @gagara-s3/client build && pnpm --filter @gagara-s3/ui build",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:watch": "vitest --watch",
