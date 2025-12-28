@@ -675,6 +675,7 @@ h2 {
   background: #151b20;
   padding: 10px;
   cursor: pointer;
+  color: #e4ece8;
 }
 
 .catalog-item span {
