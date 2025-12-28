@@ -1,4 +1,16 @@
+export declare interface AddCatalogTableResponse {
+    status: 'ok';
+    message: string;
+    tables: Record<string, string>;
+}
+
 export declare interface CatalogResponse {
+    tables: Record<string, string>;
+}
+
+export declare interface DeleteCatalogTableResponse {
+    status: 'ok';
+    message: string;
     tables: Record<string, string>;
 }
 
@@ -10,6 +22,8 @@ export declare class GagaraClient {
     query<T = any>(sql: string, options?: QueryOptions): Promise<T[]>;
     getCatalog(): Promise<Record<string, string>>;
     refreshCatalog(): Promise<Record<string, string>>;
+    addCatalogTable(name: string, path: string): Promise<Record<string, string>>;
+    deleteCatalogTable(name: string): Promise<Record<string, string>>;
 }
 
 export declare interface GagaraConfig {
