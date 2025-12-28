@@ -128,3 +128,15 @@ def add_table(name: str, path: str) -> dict[str, str]:
     _save_catalog(tables)
     _cached_catalog = tables
     return tables
+
+
+def delete_table(name: str) -> dict[str, str]:
+    if not name:
+        raise CatalogError("Table name is required")
+
+    global _cached_catalog
+    tables = _load_catalog()
+    tables.pop(str(name), None)
+    _save_catalog(tables)
+    _cached_catalog = tables
+    return tables

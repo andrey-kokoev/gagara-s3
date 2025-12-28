@@ -20,3 +20,7 @@ class ErrorResponse(BaseModel):
 class CatalogEntryRequest(BaseModel):
     name: str
     path: str
+
+
+class CatalogDeleteRequest(BaseModel):
+    name: str

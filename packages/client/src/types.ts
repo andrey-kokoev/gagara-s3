@@ -31,6 +31,12 @@ export interface AddCatalogTableResponse {
   tables: Record<string, string>
 }
 
+export interface DeleteCatalogTableResponse {
+  status: 'ok'
+  message: string
+  tables: Record<string, string>
+}
+
 export interface GagaraErrorResponse {
   error: string
   code: string

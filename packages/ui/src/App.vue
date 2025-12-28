@@ -41,10 +41,13 @@
         <div v-if="catalogLoading" class="muted">Loading catalog...</div>
         <div v-else-if="catalogError" class="error">{{ catalogError }}</div>
         <ul v-else class="catalog-list">
-          <li v-for="table in catalogEntries" :key="table.name">
+          <li v-for="table in catalogEntries" :key="table.name" class="catalog-row">
             <button class="catalog-item" @click="appendTable(table.name)">
               <span>{{ table.name }}</span>
               <span class="path">{{ table.path }}</span>
+            </button>
+            <button class="ghost danger" @click="deleteTable(table.name)" :disabled="addingTable">
+              Delete
             </button>
           </li>
         </ul>
@@ -248,6 +251,29 @@ async function addTable() {
     clearTableForm()
   } catch (err) {
     tableError.value = (err as Error).message || "Failed to add table"
+  } finally {
+    addingTable.value = false
+  }
+}
+
+async function deleteTable(name: string) {
+  const activeClient = client.value
+  if (!activeClient) {
+    tableError.value = "Missing server URL or service token."
+    return
+  }
+
+  tableError.value = ""
+  addingTable.value = true
+
+  try {
+    const tables = await activeClient.deleteCatalogTable(name)
+    catalogEntries.value = Object.entries(tables).map(([tableName, path]) => ({
+      name: tableName,
+      path,
+    }))
+  } catch (err) {
+    tableError.value = (err as Error).message || "Failed to delete table"
   } finally {
     addingTable.value = false
   }
@@ -594,6 +620,12 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.catalog-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
 }
 
 .catalog-item {

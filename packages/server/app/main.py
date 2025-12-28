@@ -2,10 +2,11 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app import auth, catalog, config, engine
-from app.models import CatalogEntryRequest, QueryRequest
+from app.models import CatalogDeleteRequest, CatalogEntryRequest, QueryRequest
 
 
 def _error_response(status_code: int, code: str, message: str, hint: str | None = None) -> JSONResponse:
@@ -38,6 +39,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(auth.AuthError)
@@ -115,6 +123,24 @@ async def add_catalog_table(
         return _error_response(500, "CATALOG_ERROR", exc.args[0], hint)
 
     return JSONResponse({"status": "ok", "message": "Table added", "tables": tables})
+
+
+@app.delete("/catalog/tables")
+async def delete_catalog_table(
+    request: CatalogDeleteRequest,
+    _token: str = Depends(auth.verify_token),
+):
+    name = request.name.strip()
+    if not name:
+        return _error_response(400, "CATALOG_ERROR", "Table name is required")
+
+    try:
+        tables = catalog.delete_table(name)
+    except catalog.CatalogError as exc:
+        hint = str(exc) if _is_dev() else None
+        return _error_response(500, "CATALOG_ERROR", exc.args[0], hint)
+
+    return JSONResponse({"status": "ok", "message": "Table deleted", "tables": tables})
 
 
 def _rows_to_csv(rows: list[dict]) -> str:

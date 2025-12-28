@@ -6,6 +6,7 @@ import type {
   CatalogResponse,
   RefreshCatalogResponse,
   AddCatalogTableResponse,
+  DeleteCatalogTableResponse,
   GagaraErrorResponse,
 } from './types'
 import { GagaraError, GagaraHttpError } from './utils/errors'
@@ -100,5 +101,16 @@ export class GagaraClient {
       body: JSON.stringify({ name, path }),
     })
     return (result as AddCatalogTableResponse).tables
+  }
+
+  async deleteCatalogTable (name: string): Promise<Record<string, string>> {
+    const result = await this.request<DeleteCatalogTableResponse>('/catalog/tables', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
+    })
+    return (result as DeleteCatalogTableResponse).tables
   }
 }
