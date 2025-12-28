@@ -17,7 +17,7 @@
     "test:debug": "vitest run --reporter verbose --reporter hanging-process --logHeapUsage --testTimeout 20000 --hookTimeout 20000",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "build_and_commit": "bash -lc 'msg=\"${npm_config_msg:-.}\"; pnpm build && git add -A && git commit -m \"$msg\"'",
+    "build_and_commit": "bash -lc 'msg=\"${npm_config_msg:-.}\"; pnpm build && git add -A && git commit -m \"$msg\" && git push origin main'",
     "lint": "eslint ."
   },
   "devDependencies": {
