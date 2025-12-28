@@ -59,6 +59,7 @@ export class GagaraClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: options.signal,
       body: JSON.stringify({ sql }),
     })
 

@@ -48,4 +48,5 @@ export interface GagaraErrorResponse {
 
 export interface QueryOptions {
   format?: GagaraFormat
+  signal?: AbortSignal
 }

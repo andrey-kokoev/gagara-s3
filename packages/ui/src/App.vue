@@ -119,12 +119,13 @@
                 <option value="csv">csv</option>
               </select>
               <button
-                class="primary"
+                class="primary muted"
                 data-testid="run-query"
                 @click="runQuery"
                 :disabled="loading || !clientReady"
               >
-                {{ loading ? "Running..." : "Run query" }}
+                <span>{{ loading ? "Running..." : "Run query" }}</span>
+                <span v-if="!loading" class="shortcut">Ctrl+Enter</span>
               </button>
             </div>
           </div>
@@ -135,6 +136,7 @@
               class="editor-input"
               spellcheck="false"
               placeholder="SELECT * FROM users LIMIT 50"
+              @keydown.ctrl.enter.prevent="runQuery"
             ></textarea>
             <pre class="editor-preview" v-html="highlightedSql"></pre>
           </div>
@@ -152,7 +154,10 @@
           </div>
 
           <div v-if="error" class="error">{{ error }}</div>
-          <div v-else-if="loading" class="muted">Query running...</div>
+          <div v-else-if="loading" class="muted loading-row">
+            <span>Query running...</span>
+            <button class="ghost" type="button" @click="cancelQuery">Cancel</button>
+          </div>
           <div v-else-if="rows.length === 0" class="muted">No results yet.</div>
           <div v-else class="table-wrap">
             <table>
@@ -210,6 +215,7 @@ const format = ref<"json" | "csv">("json")
 const rows = ref<Array<Record<string, unknown>>>([])
 const error = ref("")
 const loading = ref(false)
+const activeQuery = ref<AbortController | null>(null)
 
 const catalogEntries = ref<Array<{ name: string; path: string }>>([])
 const catalogLoading = ref(false)
@@ -346,17 +352,35 @@ async function runQuery() {
     return
   }
 
+  if (loading.value) {
+    return
+  }
+
   error.value = ""
   loading.value = true
+  const controller = new AbortController()
+  activeQuery.value = controller
 
   try {
-    const data = await activeClient.query(sql.value, { format: format.value })
+    const data = await activeClient.query(sql.value, {
+      format: format.value,
+      signal: controller.signal,
+    })
     rows.value = data
   } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      error.value = "Query cancelled."
+      return
+    }
     error.value = (err as Error).message || "Query failed"
   } finally {
     loading.value = false
+    activeQuery.value = null
   }
+}
+
+function cancelQuery() {
+  activeQuery.value?.abort()
 }
 
 function appendTable(name: string) {
@@ -598,11 +622,27 @@ h2 {
   color: var(--ui-text-on-primary);
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.primary.muted {
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+}
+
+.primary.muted .shortcut {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
 }
 
 .ghost {
@@ -792,6 +832,12 @@ h2 {
   overflow-x: auto;
   overflow-y: auto;
   max-height: 420px;
+}
+
+.loading-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 table {
