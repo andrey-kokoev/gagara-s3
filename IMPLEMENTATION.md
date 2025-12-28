@@ -33,7 +33,7 @@ This document provides concrete technical decisions to guide development. Refer 
 |-------|--------|-----------|
 | **Framework** | Vue 3 | Lightweight, reactive, good TypeScript support |
 | **Build** | Vite | Fast, dev/prod builds |
-| **Styling** | CSS modules | Scoped, maintainable |
+| **Styling** | Scoped styles in `App.vue` | Single-file component with scoped CSS |
 | **Editor** | Textarea + syntax highlighting library (Highlight.js or Prism) | Minimal dependencies, simple |
 | **Config** | Environment variables at build time | API URL and token set during build |
 
@@ -52,6 +52,7 @@ GAGARA_S3_REGION="auto"  # For R2, use "auto"; for AWS, use region like "us-east
 GAGARA_S3_ACCESS_KEY_ID="..."
 GAGARA_S3_SECRET_ACCESS_KEY="..."
 GAGARA_S3_ENDPOINT_URL="https://my-endpoint.r2.cloudflarestorage.com"  # Optional; defaults to AWS
+GAGARA_S3_DIR="gagara-s3"
 GAGARA_S3_DEFAULT_CATALOG="catalogues/catalog.json"
 GAGARA_S3_SERVICE_TOKEN="your-secret-token"
 ```
@@ -71,9 +72,13 @@ GAGARA_S3_SERVICE_TOKEN="your-secret-token"
        aws_secret_access_key=os.getenv("GAGARA_S3_SECRET_ACCESS_KEY"),
    )
 
+   key = os.getenv("GAGARA_S3_DEFAULT_CATALOG")
+   prefix = (os.getenv("GAGARA_S3_DIR") or "").strip("/")
+   if prefix:
+       key = f"{prefix}/{key.lstrip('/')}"
    response = client.get_object(
        Bucket=os.getenv("GAGARA_S3_BUCKET"),
-       Key=os.getenv("GAGARA_S3_DEFAULT_CATALOG"),
+       Key=key,
    )
    catalog_json = json.loads(response["Body"].read().decode("utf-8"))
    ```
@@ -142,7 +147,7 @@ interface CatalogResponse {
 ### Client Class
 
 ```typescript
-export class GagaraS3Client {
+export class GagaraClient {
   constructor(options: {
     baseUrl: string
     token: string
@@ -157,9 +162,13 @@ export class GagaraS3Client {
     rowCount: number
   }> { ... }
 
-  async catalog(): Promise<{ tables: Record<string, string> }> { ... }
+  async getCatalog(): Promise<Record<string, string>> { ... }
 
-  async refreshCatalog(): Promise<{ status: string; tables: Record<string, string> }> { ... }
+  async refreshCatalog(): Promise<Record<string, string>> { ... }
+
+  async addCatalogTable(name: string, path: string): Promise<Record<string, string>> { ... }
+
+  async deleteCatalogTable(name: string): Promise<Record<string, string>> { ... }
 }
 ```
 
@@ -219,12 +228,13 @@ class NetworkError extends GagaraS3Error { }
    GAGARA_S3_ACCESS_KEY_ID="test-key"
    GAGARA_S3_SECRET_ACCESS_KEY="test-secret"
    GAGARA_S3_ENDPOINT_URL="https://test.r2.cloudflarestorage.com"
+   GAGARA_S3_DIR="gagara-s3"
    GAGARA_S3_DEFAULT_CATALOG="catalogues/catalog.json"
    GAGARA_S3_SERVICE_TOKEN="test-token"
    
    # UI (.env for dev)
-   VITE_GAGARA_SERVER_URL="http://localhost:8000"
-   VITE_GAGARA_SERVICE_TOKEN="test-token"
+   GAGARA_S3_SERVER_URL="http://localhost:8000"
+   GAGARA_S3_SERVICE_TOKEN="test-token"
    ```
 
 3. **Start server locally**:
@@ -286,11 +296,10 @@ pnpm --filter @gagara-s3/ui build
 
 **Environment variables for builds:**
 - **Server**: `.env` contains S3 credentials and token (container env in production)
-- **UI**: `VITE_*` env vars baked into build (e.g., `VITE_GAGARA_SERVER_URL`)
+- **UI**: `GAGARA_*` env vars for server URL, with token optionally provided at runtime via localStorage
   ```bash
   # Build UI for production
-  VITE_GAGARA_SERVER_URL="https://your-api.example.com" \
-  VITE_GAGARA_SERVICE_TOKEN="your-token" \
+  GAGARA_S3_SERVER_URL="https://your-api.example.com" \
   pnpm --filter @gagara-s3/ui build
   ```
 
@@ -308,6 +317,7 @@ pnpm --filter @gagara-s3/ui build
 | `CATALOG_ERROR` | 500 | Failed to load catalog | S3 access denied, malformed JSON |
 | `FORMAT_ERROR` | 400 | Invalid format parameter | `?format=xml` |
 | `INTERNAL_ERROR` | 500 | Unexpected server error | DuckDB crash, unknown |
+| `CATALOG_ERROR` | 500 | Catalog read/write error | Missing catalog, S3 error |
 
 ### Error Response Format
 
@@ -384,15 +394,8 @@ gagara-s3/
 │       │   ├── index.html
 │       │   ├── main.ts            # Vue app entry
 │       │   ├── App.vue            # Root component
-│       │   ├── components/
-│       │   │   ├── Editor.vue     # SQL editor
-│       │   │   ├── Results.vue    # Result viewer
-│       │   │   └── Catalog.vue    # Catalog browser
-│       │   ├── stores/
-│       │   │   └── query.ts       # Query state (Pinia)
-│       │   ├── styles/
-│       │   │   └── *.css
-│       │   └── types.ts
+│       │   ├── App.vue            # Single-file UI
+│       │   └── main.ts            # Vue app entry
 │       ├── vite.config.ts
 │       ├── tsconfig.json
 │       └── package.json

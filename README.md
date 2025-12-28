@@ -300,6 +300,7 @@ console.log(catalog.tables)
 - Result viewer (table, grid, or raw)
 - Export options (CSV, JSON download)
 - Catalog browser (list available tables)
+- UI build uses a Vite alias so `@gagara-s3/client` resolves to `packages/client/src` (no separate client build needed)
 
 ## Development Workflow
 

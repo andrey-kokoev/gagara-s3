@@ -50,8 +50,10 @@
 5. Deserialize `data` field based on `format`
 6. Throw typed errors (AuthError, ParseError, ExecutionError, NetworkError)
 7. Handle network errors (fetch failures, timeouts)
-8. Implement `catalog()` method → GET /catalog
+8. Implement `getCatalog()` method → GET /catalog
 9. Implement `refreshCatalog()` method → POST /refresh-catalog
+10. Implement `addCatalogTable()` method → POST /catalog/tables
+11. Implement `deleteCatalogTable()` method → DELETE /catalog/tables
 
 **Types & Serialization** (`packages/client/src/types.ts`)
 1. Request structure validation (type narrowing)
@@ -60,7 +62,7 @@
 
 ### UI
 
-**Editor Component** (`packages/ui/src/editor.ts`)
+**Editor Component** (`packages/ui/src/App.vue`)
 1. Capture SQL input
 2. Submit query on button click
 3. Disable submit while loading
@@ -68,19 +70,20 @@
 5. Apply syntax highlighting (Highlight.js or Prism)
 6. Handle keyboard shortcuts (e.g., Ctrl+Enter to submit)
 
-**Result Viewer** (`packages/ui/src/results.ts`)
+**Result Viewer** (`packages/ui/src/App.vue`)
 1. Display table from JSON result
 2. Handle empty results
 3. Provide CSV download links
 4. Show error messages
 
-**Catalog Browser** (`packages/ui/src/catalog.ts`)
-1. Fetch catalog via client `catalog()` method
+**Catalog Browser** (`packages/ui/src/App.vue`)
+1. Fetch catalog via client `getCatalog()` method
 2. Display table list (names from catalog)
 3. Insert table name on click
 4. Handle empty catalog gracefully (no tables)
 5. Show loading state while fetching
 6. Show error message on fetch failure
+7. Add table entry via `addCatalogTable()` and delete via `deleteCatalogTable()`
 
 ---
 
@@ -88,7 +91,7 @@
 
 1. `tests/setup.ts` loads `.env` and `packages/ui/.env`.
 2. It ensures local fixtures exist at `fixtures/table_1/data.csv` and `fixtures/table_2/data.csv`.
-3. It uploads those fixtures to S3 (if missing) and writes them into the catalog at `GAGARA_S3_DEFAULT_CATALOG`.
+3. It uploads those fixtures to S3 (if missing) and writes them into the catalog at `GAGARA_S3_DIR/GAGARA_S3_DEFAULT_CATALOG`.
 4. Integration/E2E tests expect at least two catalog tables (`table_1`, `table_2`) to be present.
 
 Required env vars for seeding:
@@ -97,6 +100,7 @@ Required env vars for seeding:
 - `GAGARA_S3_ENDPOINT_URL`
 - `GAGARA_S3_ACCESS_KEY_ID`
 - `GAGARA_S3_SECRET_ACCESS_KEY`
+- `GAGARA_S3_DIR`
 - `GAGARA_S3_DEFAULT_CATALOG`
 - `GAGARA_S3_SERVER_URL`
 - `GAGARA_S3_SERVICE_TOKEN`
@@ -117,6 +121,8 @@ Required env vars for seeding:
 3. GET /catalog with invalid token → 401 AUTH_ERROR
 4. POST /refresh-catalog with S3 access denied → 500 CATALOG_ERROR with "S3 access denied" message
 5. GET /catalog with malformed catalog.json → 500 CATALOG_ERROR with "malformed JSON" message
+6. POST /catalog/tables → adds entry, persists to S3
+7. DELETE /catalog/tables → removes entry, persists to S3
 
 **Auth + Query Handler**
 1. Request with invalid token → 401 + error JSON
@@ -187,13 +193,14 @@ Required env vars for seeding:
 7. Error bubbles up → UI shows error message
 
 **Catalog Display**
-1. UI initializes with `GAGARA_S3_SERVER_URL` and `GAGARA_S3_SERVICE_TOKEN` from env vars
-2. UI calls `client.catalog()` to fetch table list
+1. UI initializes with `GAGARA_S3_SERVER_URL`, token from env or localStorage
+2. UI calls `client.getCatalog()` to fetch table list
 3. Client returns table list
 4. UI renders clickable table names
 5. Click inserts table name into editor
 6. Error on fetch → UI shows error message
 7. Empty catalog → UI shows "No tables" message
+8. Add/delete actions update the catalog list
 
 ---
 
