@@ -42,12 +42,23 @@
         <div v-else-if="catalogError" class="error">{{ catalogError }}</div>
         <ul v-else class="catalog-list">
           <li v-for="table in catalogEntries" :key="table.name" class="catalog-row">
-            <button class="catalog-item" @click="appendTable(table.name)">
+            <button class="catalog-item" type="button" @click="appendTable(table.name)">
               <span>{{ table.name }}</span>
               <span class="path">{{ table.path }}</span>
             </button>
-            <button class="ghost danger" @click="deleteTable(table.name)" :disabled="addingTable">
-              Delete
+            <button
+              class="icon-button danger"
+              type="button"
+              @click="deleteTable(table.name)"
+              :disabled="addingTable"
+              aria-label="Delete table"
+              title="Delete table"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"
+                />
+              </svg>
             </button>
           </li>
         </ul>
@@ -376,8 +387,8 @@ function clearToken() {
 :global(body) {
   margin: 0;
   font-family: "Space Grotesk", system-ui, sans-serif;
-  background: radial-gradient(circle at top, #f1f0e6, #d9e0d8 50%, #b2c2c0 100%);
-  color: #10211c;
+  background: radial-gradient(circle at top, #20262b, #15191d 55%, #0c0f12 100%);
+  color: #e4ece8;
   min-height: 100vh;
 }
 
@@ -406,7 +417,7 @@ function clearToken() {
   text-transform: uppercase;
   letter-spacing: 0.24em;
   font-size: 12px;
-  color: #42655c;
+  color: #88a39a;
   margin-bottom: 8px;
 }
 
@@ -417,7 +428,7 @@ h1 {
 
 .subtitle {
   margin: 0;
-  color: #36524a;
+  color: #a6b5ae;
 }
 
 .status {
@@ -430,7 +441,7 @@ h1 {
 .status-meta {
   margin: 0;
   font-size: 12px;
-  color: #42655c;
+  color: #88a39a;
 }
 
 .pill {
@@ -438,18 +449,20 @@ h1 {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  background: #f3efe1;
-  border: 1px solid #c8d3cc;
+  background: #1d2328;
+  border: 1px solid #2b343a;
 }
 
 .pill.ok {
-  background: #d4f1d7;
-  border-color: #78c58a;
+  background: #113126;
+  border-color: #2f6b52;
+  color: #bfe9d5;
 }
 
 .pill.warn {
-  background: #ffe3c0;
-  border-color: #f2b268;
+  background: #3a2b17;
+  border-color: #a46a2b;
+  color: #f3d8b0;
 }
 
 .token-input {
@@ -463,7 +476,7 @@ h1 {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #42655c;
+  color: #88a39a;
 }
 
 .token-row {
@@ -476,14 +489,15 @@ h1 {
   width: 220px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid #c3d0c6;
-  background: #fefcf7;
+  border: 1px solid #2f3a40;
+  background: #151b20;
+  color: #e4ece8;
   font-size: 12px;
 }
 
 .ghost.danger {
-  border-color: #f2b8aa;
-  color: #7a2515;
+  border-color: #6f2d25;
+  color: #f0b3a4;
 }
 
 .grid {
@@ -499,11 +513,11 @@ h1 {
 }
 
 .panel {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(16, 20, 24, 0.88);
   border-radius: 18px;
-  border: 1px solid rgba(19, 41, 34, 0.1);
+  border: 1px solid rgba(123, 157, 146, 0.14);
   padding: 20px;
-  box-shadow: 0 12px 30px rgba(16, 33, 28, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 .panel-header {
@@ -527,8 +541,9 @@ h2 {
 .select {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid #c3d0c6;
-  background: #fefcf7;
+  border: 1px solid #2f3a40;
+  background: #151b20;
+  color: #e4ece8;
   font-family: "IBM Plex Mono", monospace;
 }
 
@@ -536,8 +551,8 @@ h2 {
   padding: 10px 16px;
   border-radius: 12px;
   border: none;
-  background: #162f27;
-  color: #fefcf7;
+  background: #1f4336;
+  color: #ecf6f1;
   font-weight: 600;
   cursor: pointer;
 }
@@ -550,9 +565,9 @@ h2 {
 .ghost {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid #b7c6bf;
+  border: 1px solid #2f3a40;
   background: transparent;
-  color: #22362f;
+  color: #c6d6cf;
   cursor: pointer;
 }
 
@@ -560,8 +575,8 @@ h2 {
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid #c5d2c9;
-  background: #fefcf7;
+  border: 1px solid #2c3940;
+  background: #12171c;
   min-height: 180px;
 }
 
@@ -574,7 +589,7 @@ h2 {
   line-height: 1.6;
   color: transparent;
   background: transparent;
-  caret-color: #132b23;
+  caret-color: #bcd4ca;
   border: none;
   resize: none;
 }
@@ -589,28 +604,28 @@ h2 {
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   line-height: 1.6;
-  color: #132b23;
+  color: #d0e2da;
   white-space: pre-wrap;
   pointer-events: none;
 }
 
 :deep(.hljs-keyword) {
-  color: #0f4c5c;
+  color: #80b2c5;
   font-weight: 600;
 }
 
 :deep(.hljs-string) {
-  color: #8f2d56;
+  color: #e2a3b8;
 }
 
 :deep(.hljs-number) {
-  color: #5a189a;
+  color: #b59af1;
 }
 
 .hint {
   margin: 12px 0 0;
   font-size: 12px;
-  color: #5c746b;
+  color: #89a39a;
 }
 
 .catalog-list {
@@ -628,12 +643,36 @@ h2 {
   align-items: stretch;
 }
 
+.icon-button {
+  width: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+  border: 1px solid #2f3a40;
+  background: #151b20;
+  color: #c6d6cf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.icon-button.danger {
+  border-color: #6f2d25;
+  color: #f0b3a4;
+}
+
 .catalog-item {
   width: 100%;
   text-align: left;
-  border: 1px solid #c6d2c9;
+  border: 1px solid #2d3a40;
   border-radius: 12px;
-  background: #fefcf7;
+  background: #151b20;
   padding: 10px;
   cursor: pointer;
 }
@@ -644,14 +683,14 @@ h2 {
 
 .catalog-item .path {
   font-size: 11px;
-  color: #587069;
+  color: #7f958c;
   margin-top: 4px;
 }
 
 .catalog-add {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #d4ded7;
+  border-top: 1px solid #2d3a40;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -667,14 +706,15 @@ h2 {
   flex-direction: column;
   gap: 6px;
   font-size: 12px;
-  color: #3b5650;
+  color: #a6b5ae;
 }
 
 .catalog-add input {
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid #c3d0c6;
-  background: #fefcf7;
+  border: 1px solid #2f3a40;
+  background: #151b20;
+  color: #e4ece8;
   font-size: 12px;
 }
 
@@ -687,7 +727,7 @@ h2 {
 .path-prefix {
   font-family: "IBM Plex Mono", monospace;
   font-size: 12px;
-  color: #3b5650;
+  color: #a6b5ae;
   padding: 6px 0;
 }
 
@@ -719,22 +759,22 @@ td {
 
 th {
   font-size: 12px;
-  color: #3b5650;
+  color: #9bb0a8;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .muted {
-  color: #5c746b;
+  color: #8fa6a0;
   font-size: 13px;
 }
 
 .error {
-  color: #9b2e1a;
-  background: #ffe0d8;
+  color: #f3b7a9;
+  background: #2b1411;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid #f2b8aa;
+  border: 1px solid #6f2d25;
 }
 
 @keyframes fadeIn {
