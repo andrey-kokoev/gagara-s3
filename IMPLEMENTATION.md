@@ -6,16 +6,16 @@ This document provides concrete technical decisions to guide development. Refer 
 
 ## Technology Stack
 
-### Server (Cloudflare Worker)
+### Server (FastAPI Container)
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| **HTTP Framework** | Hono | Lightweight, Cloudflare-optimized, good TypeScript support |
-| **DuckDB** | `@duckdb/wasm` | Browser/Worker-compatible, streaming support |
-| **S3 Client** | AWS SDK v3 (`@aws-sdk/client-s3`) | Standard, supports custom endpoints (R2, MinIO) |
+| **HTTP Framework** | FastAPI | Simple, fast async API framework |
+| **DuckDB** | `duckdb` (Python) | Native DuckDB engine for container runtime |
+| **S3 Client** | `boto3` | Standard, supports custom endpoints (R2, MinIO) |
 | **Package Structure** | Monorepo (pnpm workspace) | Server + client in single repo, shared types |
-| **Bundler** | Wrangler (built-in) | Native Cloudflare Workers tooling |
-| **TypeScript** | Latest stable | Strict mode enabled |
+| **Container** | Docker | Standard container deployment |
+| **Python** | 3.11+ | Modern runtime with good performance |
 
 ### Client Library
 
@@ -35,15 +35,15 @@ This document provides concrete technical decisions to guide development. Refer 
 | **Build** | Vite | Fast, dev/prod builds |
 | **Styling** | CSS modules | Scoped, maintainable |
 | **Editor** | Textarea + syntax highlighting library (Highlight.js or Prism) | Minimal dependencies, simple |
-| **Config** | Environment variables at build time | Worker URL and token set during build |
+| **Config** | Environment variables at build time | API URL and token set during build |
 
 ---
 
 ## Credentials & S3 Integration
 
-### Credentials on Worker
+### Credentials on Server
 
-Store in Cloudflare Workers secrets (`.env` locally, environment in production):
+Store in environment variables (`.env` locally, container env in production):
 
 ```env
 # .env (local development)
@@ -56,65 +56,57 @@ GAGARA_S3_DEFAULT_CATALOG="catalogues/catalog.json"
 GAGARA_S3_SERVICE_TOKEN="your-secret-token"
 ```
 
-### Accessing S3 from Worker
+### Accessing S3 from Server
 
-1. **Read catalog** (on Worker startup):
-   ```typescript
-   import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
-   
-   const s3 = new S3Client({
-     region: process.env.GAGARA_S3_REGION,
-     credentials: {
-       accessKeyId: process.env.GAGARA_S3_ACCESS_KEY_ID,
-       secretAccessKey: process.env.GAGARA_S3_SECRET_ACCESS_KEY,
-     },
-     endpoint: process.env.GAGARA_S3_ENDPOINT_URL, // Optional
-   })
-   
-   const catalogPath = process.env.GAGARA_S3_DEFAULT_CATALOG
-   const catalogBuf = await s3.send(
-     new GetObjectCommand({ Bucket: process.env.GAGARA_S3_BUCKET, Key: catalogPath })
+1. **Read catalog** (on server startup):
+   ```python
+   import boto3
+   import json
+
+   client = boto3.client(
+       "s3",
+       region_name=os.getenv("GAGARA_S3_REGION"),
+       endpoint_url=os.getenv("GAGARA_S3_ENDPOINT_URL"),
+       aws_access_key_id=os.getenv("GAGARA_S3_ACCESS_KEY_ID"),
+       aws_secret_access_key=os.getenv("GAGARA_S3_SECRET_ACCESS_KEY"),
    )
-   const catalogJson = JSON.parse(await catalogBuf.Body.transformToString())
+
+   response = client.get_object(
+       Bucket=os.getenv("GAGARA_S3_BUCKET"),
+       Key=os.getenv("GAGARA_S3_DEFAULT_CATALOG"),
+   )
+   catalog_json = json.loads(response["Body"].read().decode("utf-8"))
    ```
 
 2. **DuckDB instantiation (per-request)**:
-   - Create a fresh DuckDB instance for each query request
+   - Create a fresh DuckDB connection for each query request
    - Set S3 credentials before querying:
-   ```typescript
-   import * as duckdb from "@duckdb/wasm"
-   
-   async function executeQuery(sql: string, tables: Record<string, string>) {
-     const db = new duckdb.Database()
-     const conn = await db.connect()
-     
-     // Set S3 credentials for this query
-     await conn.query(`
-       SET secret = (
-         TYPE S3,
-         KEY_ID '${process.env.GAGARA_S3_ACCESS_KEY_ID}',
-         SECRET '${process.env.GAGARA_S3_SECRET_ACCESS_KEY}',
-         REGION '${process.env.GAGARA_S3_REGION}',
-         ENDPOINT '${process.env.GAGARA_S3_ENDPOINT_URL || ""}'
-       )
-     `)
-     
-     // Register tables from catalog
-     for (const [alias, s3Path] of Object.entries(tables)) {
-       await conn.query(`CREATE VIEW ${alias} AS SELECT * FROM '${s3Path}'`)
-     }
-     
-     // Execute user query
-     const result = await conn.query(sql)
-     return result
-   }
+   ```python
+   import duckdb
+
+   def execute_query(sql: str, tables: dict[str, str]) -> list[dict]:
+       con = duckdb.connect(database=":memory:")
+       con.execute("INSTALL httpfs")
+       con.execute("LOAD httpfs")
+       con.execute(f"SET s3_region='{os.getenv('GAGARA_S3_REGION')}'")
+       con.execute(f"SET s3_access_key_id='{os.getenv('GAGARA_S3_ACCESS_KEY_ID')}'")
+       con.execute(f"SET s3_secret_access_key='{os.getenv('GAGARA_S3_SECRET_ACCESS_KEY')}'")
+       if os.getenv("GAGARA_S3_ENDPOINT_URL"):
+           con.execute(f"SET s3_endpoint='{os.getenv('GAGARA_S3_ENDPOINT_URL')}'")
+           con.execute("SET s3_url_style='path'")
+       for alias, s3_path in tables.items():
+           con.execute(f"CREATE VIEW \"{alias}\" AS SELECT * FROM '{s3_path}'")
+       cursor = con.execute(sql)
+       columns = [col[0] for col in cursor.description]
+       rows = cursor.fetchall()
+       return [dict(zip(columns, row)) for row in rows]
    ```
 
 ### Design Decision
 
 - **Per-request DuckDB**: Simpler isolation, no shared state between requests, easier cleanup
-- **Credentials on Worker, not client**: S3 credentials never exposed to client
-- **Worker retrieves catalog at startup**: Catalog cached in memory, refreshed via `POST /refresh-catalog`
+- **Credentials on server, not client**: S3 credentials never exposed to client
+- **Server retrieves catalog at startup**: Catalog cached in memory, refreshed via `POST /refresh-catalog`
 
 ---
 
@@ -231,15 +223,15 @@ class NetworkError extends GagaraS3Error { }
    GAGARA_S3_SERVICE_TOKEN="test-token"
    
    # UI (.env for dev)
-   VITE_GAGARA_WORKER_URL="http://localhost:8787"
+   VITE_GAGARA_SERVER_URL="http://localhost:8000"
    VITE_GAGARA_SERVICE_TOKEN="test-token"
    ```
 
-3. **Start Worker locally**:
+3. **Start server locally**:
    ```bash
-   wrangler dev
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
-   Server runs on `http://localhost:8787`
+   Server runs on `http://localhost:8000`
 
 4. **Start UI dev server**:
    ```bash
@@ -259,7 +251,7 @@ class NetworkError extends GagaraS3Error { }
 - Full query flow (catalog → DuckDB → format → response)
 
 **E2E Tests** (Playwright):
-- Real Worker (local), real UI
+- Real server (local), real UI
 - Real S3 test bucket (accept latency/cost for realism)
 
 **Mocking S3 Locally**:
@@ -280,26 +272,24 @@ pnpm --filter @gagara-s3/client build
 # To publish: cd packages/client && pnpm publish
 ```
 
-**Server (Cloudflare Worker)**:
+**Server (FastAPI container)**:
 ```bash
-pnpm --filter @gagara-s3/server build
-# Wrangler builds automatically via wrangler.toml
-# Deploy: wrangler deploy
+docker build -t gagara-s3-server packages/server
 ```
 
 **UI** (static assets):
 ```bash
 pnpm --filter @gagara-s3/ui build
 # Output: packages/ui/dist/ (HTML + JS + CSS)
-# Can be hosted separately or embedded in Worker
+# Can be hosted separately or behind a reverse proxy with the API
 ```
 
 **Environment variables for builds:**
-- **Server**: `.env` contains S3 credentials and token (Wrangler secrets in production)
-- **UI**: `VITE_*` env vars baked into build (e.g., `VITE_GAGARA_WORKER_URL`)
+- **Server**: `.env` contains S3 credentials and token (container env in production)
+- **UI**: `VITE_*` env vars baked into build (e.g., `VITE_GAGARA_SERVER_URL`)
   ```bash
   # Build UI for production
-  VITE_GAGARA_WORKER_URL="https://your-worker.example.com" \
+  VITE_GAGARA_SERVER_URL="https://your-api.example.com" \
   VITE_GAGARA_SERVICE_TOKEN="your-token" \
   pnpm --filter @gagara-s3/ui build
   ```
@@ -340,15 +330,15 @@ pnpm --filter @gagara-s3/ui build
 
 ## Performance & Constraints
 
-### Limits (Worker-safe)
+### Limits (Container-safe)
 
 | Constraint | Value | Rationale |
 |-----------|-------|-----------|
-| **Query timeout** | No hard limit | Let Cloudflare Workers enforce (30s CPU limit) |
-| **Max result size** | 100 MB | Worker response limit |
+| **Query timeout** | No hard limit | Let infrastructure enforce (reverse proxy, orchestration) |
+| **Max result size** | 100 MB | Tune via proxy/app limits |
 | **Max rows returned** | Unlimited | Trust DuckDB to handle memory |
 | **Catalog size** | 10 MB | Cache in memory |
-| **Concurrent queries** | 1 per Worker instance | Single-threaded WASM |
+| **Concurrent queries** | Configurable | Controlled by container CPU/worker count |
 
 ### Optimizations
 
@@ -371,19 +361,15 @@ pnpm --filter @gagara-s3/ui build
 gagara-s3/
 ├── packages/
 │   ├── server/
-│   │   ├── src/
-│   │   │   ├── index.ts           # Hono app, routes
-│   │   │   ├── auth.ts            # Token validation
-│   │   │   ├── catalog.ts         # Load & cache catalog
-│   │   │   ├── engine.ts          # DuckDB executor (per-request)
-│   │   │   ├── formats/
-│   │   │   │   ├── json.ts        # JSON serializer
-│   │   │   │   └── csv.ts         # CSV serializer (plain text)
-│   │   │   ├── errors.ts          # Error definitions
-│   │   │   └── types.ts           # Shared types
-│   │   ├── wrangler.toml          # Cloudflare config
-│   │   ├── tsconfig.json
-│   │   └── package.json
+│   │   ├── app/
+│   │   │   ├── main.py            # FastAPI entry point
+│   │   │   ├── config.py          # Env loading + settings
+│   │   │   ├── auth.py            # Token validation
+│   │   │   ├── catalog.py         # Load & cache catalog
+│   │   │   ├── engine.py          # DuckDB executor (per-request)
+│   │   │   └── models.py          # Pydantic models
+│   │   ├── Dockerfile             # Container build
+│   │   └── requirements.txt
 │   ├── client/
 │   │   ├── src/
 │   │   │   ├── index.ts           # Exports
@@ -451,12 +437,12 @@ gagara-s3/
 
 **Why no hard query timeout?**
 - Simpler implementation
-- Cloudflare Workers already enforce 30s CPU limit
+- Infrastructure can enforce CPU/time limits (proxy/orchestrator)
 - User can observe timeout naturally
 
 **Why console logging only?**
 - Simpler, no external service dependency
-- Cloudflare logs console to dashboard
+- Container logs go to stdout/stderr
 - Sufficient for debugging
 
 **Why per-request DuckDB?**
@@ -468,5 +454,5 @@ gagara-s3/
 **Why UI config via environment variables?**
 - Simpler deployment: bake config at build time
 - No runtime token/URL exposure
-- Works well with Wrangler/Cloudflare Pages deployment
+- Works well with containerized deployments and standard reverse proxies
 - Production: different env vars per environment

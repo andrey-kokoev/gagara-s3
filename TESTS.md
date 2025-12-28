@@ -2,14 +2,14 @@
 
 ## Unit Tests (Component Internals)
 
-### Server (Worker)
+### Server (API)
 
-**Auth Module** (`packages/server/src/auth/token.ts`)
+**Auth Module** (`packages/server/app/auth.py`)
 1. Validate token matches `GAGARA_S3_SERVICE_TOKEN`
 2. Reject missing/invalid tokens
 3. Return structured auth error on failure
 
-**Catalog Module** (`packages/server/src/catalog/loader.ts`)
+**Catalog Module** (`packages/server/app/catalog.py`)
 1. Parse valid `catalog.json` from S3
 2. Handle missing catalog file gracefully
 3. Handle malformed JSON (invalid syntax)
@@ -18,7 +18,7 @@
 6. Cache catalog on startup
 7. Return empty object for empty catalog (no tables)
 
-**DuckDB Engine** (`packages/server/src/engine/duckdb.ts`)
+**DuckDB Engine** (`packages/server/app/engine.py`)
 1. Execute SELECT query against mounted S3 parquet/csv
 2. Set S3 credentials (KEY_ID, SECRET, REGION, ENDPOINT) before query
 3. Return result rows as objects
@@ -27,20 +27,18 @@
 6. Handle timeout/resource limits
 7. Verify per-request isolation (no state leaks between queries)
 
-**Format Serializers**
+**Format Serializers** (`packages/server/app/main.py`)
 1. JSON: convert rows to JSON array
 2. CSV: convert rows to CSV plain text with headers
 3. All: handle empty result sets
 4. All: handle NULL values correctly
 
-**Query Handler** (`packages/server/src/handlers/query.ts`)
+**Query Handler** (`packages/server/app/main.py`)
 1. Extract & validate request body (sql, format, token)
 2. Validate format parameter (json | csv only, reject invalid formats)
 3. Call auth, catalog, engine, serializer in sequence
 4. Return proper HTTP status codes (200, 400, 401, 500)
 5. Return error messages in JSON format with `code` field
-6. Truncate query in logs to 500 chars
-7. Include execution time in logs (console output)
 
 ### Client Library
 
@@ -85,6 +83,23 @@
 6. Show error message on fetch failure
 
 ---
+
+## Test Setup (Integration + E2E)
+
+1. `tests/setup.ts` loads `.env` and `packages/ui/.env`.
+2. It ensures local fixtures exist at `fixtures/table_1/data.csv` and `fixtures/table_2/data.csv`.
+3. It uploads those fixtures to S3 (if missing) and writes them into the catalog at `GAGARA_S3_DEFAULT_CATALOG`.
+4. Integration/E2E tests expect at least two catalog tables (`table_1`, `table_2`) to be present.
+
+Required env vars for seeding:
+- `GAGARA_S3_BUCKET`
+- `GAGARA_S3_REGION`
+- `GAGARA_S3_ENDPOINT_URL`
+- `GAGARA_S3_ACCESS_KEY_ID`
+- `GAGARA_S3_SECRET_ACCESS_KEY`
+- `GAGARA_S3_DEFAULT_CATALOG`
+- `GAGARA_S3_SERVER_URL`
+- `GAGARA_S3_SERVICE_TOKEN`
 
 ## Integration Tests (Component Interactions)
 
@@ -144,7 +159,7 @@
 3. Client throws error
 
 **Catalog Error**
-1. Catalog file missing/malformed on Worker startup
+1. Catalog file missing/malformed on server startup
 2. Server returns 500 + `{ error: "...", code: "CATALOG_ERROR" }`
 3. Query fails immediately if catalog unavailable
 
@@ -172,7 +187,7 @@
 7. Error bubbles up → UI shows error message
 
 **Catalog Display**
-1. UI initializes with `VITE_GAGARA_WORKER_URL` and `VITE_GAGARA_SERVICE_TOKEN` from env vars
+1. UI initializes with `GAGARA_S3_SERVER_URL` and `GAGARA_S3_SERVICE_TOKEN` from env vars
 2. UI calls `client.catalog()` to fetch table list
 3. Client returns table list
 4. UI renders clickable table names
@@ -185,7 +200,7 @@
 ## End-to-End Tests (Full Stack)
 
 **Scenario: Basic Query**
-1. Start Worker with test catalog
+1. Start server with test catalog
 2. UI loads in browser
 3. User types: `SELECT id, name FROM users WHERE id > 5`
 4. User selects format=JSON, clicks submit
@@ -218,14 +233,14 @@
 4. File contains all rows (plain text, comma-separated)
 
 **Scenario: Catalog Refresh**
-1. Worker loads initial catalog from S3
+1. Server loads initial catalog from S3
 2. User refreshes catalog via UI (POST /refresh-catalog)
 3. New tables appear in catalog list
 4. User can query newly added tables
 
 **Scenario: Large Catalog**
 1. Catalog has 1000+ tables (10 MB max)
-2. Worker loads and caches catalog on startup
+2. Server loads and caches catalog on startup
 3. Catalog browser displays all tables (potentially paginated)
 4. Queries against any table succeed
 
@@ -236,7 +251,7 @@
 
 **Scenario: Empty Catalog**
 1. Catalog file exists but contains no tables
-2. Worker starts successfully (empty catalog allowed)
+2. Server starts successfully (empty catalog allowed)
 3. UI shows "No tables" message
 4. Any query fails with "table not found" (EXECUTION_ERROR)
 
@@ -252,7 +267,7 @@
 | **Client unit** | Vitest + HTTP mocks | Mock fetch responses, network errors, catalog/refresh methods |
 | **UI unit** | Vitest + Vue test utils | Mount components, simulate clicks, test syntax highlighting, env var init |
 | **UI → Client** | Vitest + mocks | Mock client methods, catalog display, error handling |
-| **E2E** | Playwright | Real Worker (local), real UI, real S3 test bucket, large data boundaries |
+| **E2E** | Playwright | Real server (local), real UI, real S3 test bucket, large data boundaries |
 
 ---
 

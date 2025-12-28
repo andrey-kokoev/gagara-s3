@@ -2,19 +2,27 @@
   "name": "@gagara-s3/client",
   "version": "0.1.0",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "build": "vite build",
+    "dev": "vite build --watch"
   },
   "dependencies": {
     "papaparse": "latest"
   },
   "devDependencies": {
     "typescript": "latest",
-    "@types/papaparse": "latest"
+    "@types/papaparse": "latest",
+    "vite": "latest",
+    "vite-plugin-dts": "latest"
   }
 }

@@ -17,12 +17,18 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "typescript": "latest",
-    "vitest": "latest",
-    "@vitest/ui": "latest",
-    "playwright": "latest",
+    "@aws-sdk/client-s3": "^3.958.0",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
-    "eslint": "latest"
+    "@vitejs/plugin-vue": "^5.1.4",
+    "@vitest/ui": "latest",
+    "@vue/test-utils": "^2.4.6",
+    "dotenv": "^16.4.5",
+    "eslint": "latest",
+    "jsdom": "^25.0.1",
+    "playwright": "latest",
+    "typescript": "latest",
+    "vitest": "latest",
+    "vue": "latest"
   }
 }

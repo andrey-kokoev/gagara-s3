@@ -1,19 +1,40 @@
 # gagara-s3
 SQL-over-S3
 
+## Table of Contents
+
+- [What it does](#what-it-does)
+- [What it builds upon](#what-it-builds-upon)
+- [What it consists of](#what-it-consists-of)
+- [How It Works](#how-it-works)
+- [Query Capabilities](#query-capabilities)
+- [Authentication](#authentication)
+- [Result Formats](#result-formats)
+- [Error Handling](#error-handling)
+- [Codebase Blueprint](#codebase-blueprint)
+  - [Project Structure](#project-structure)
+  - [Core Components](#core-components)
+    - [1. Server (FastAPI)](#1-server-fastapi)
+    - [2. Catalog System](#2-catalog-system)
+    - [3. TypeScript Client](#3-typescript-client)
+    - [4. UI Features](#4-ui-features)
+  - [Development Workflow](#development-workflow)
+  - [Key Implementation Details](#key-implementation-details)
+- [Testing](#testing)
+
 ## What it does
-gagara-s3 is a **self-hosted SQL query engine** that allows developers to run SQL queries against parquet and csv objects stored in S3. It's deployed on Cloudflare Workers and supports datalake-type table catalogues, enabling developers to query and integrate S3 data into their applications. 
+gagara-s3 is a **self-hosted SQL query engine** that allows developers to run SQL queries against parquet and csv objects stored in S3. It's deployed as a FastAPI container and supports datalake-type table catalogues, enabling developers to query and integrate S3 data into their applications. 
 
 ## What it builds upon
 - https://github.com/andrey-kokoev/openhub/packages/examples/cf-hono-vite
 
 ## What it consists of
-- **server**: Cloudflare Worker that exposes HTTP API for running SQL queries against S3 objects (developers self-host/deploy)
+- **server**: FastAPI service that exposes HTTP API for running SQL queries against S3 objects (deployable via container)
 - **tsclient**: TypeScript client library for developers to integrate query capabilities into their applications
 - **ui**: Web UI for running SQL queries against S3 objects using the tsclient library
 
 ## How It Works
-Developers define a table catalog as a JSON file stored in S3. The `.env` file references the catalog location via `GAGARA_S3_DEFAULT_CATALOG`. At Worker startup, the catalog is loaded and cached in memory. The TypeScript client sends queries to the Worker, which validates the request token, executes the query against S3 objects via DuckDB, and returns results in the requested format.
+Developers define a table catalog as a JSON file stored in S3. The `.env` file references the catalog location via `GAGARA_S3_DEFAULT_CATALOG`. At service startup, the catalog is loaded and cached in memory. The TypeScript client sends queries to the FastAPI service, which validates the request token, executes the query against S3 objects via DuckDB, and returns results in the requested format.
 
 ## Query Capabilities
 - Supports any SQL query that DuckDB executes at runtime
@@ -44,23 +65,16 @@ Developers define a table catalog as a JSON file stored in S3. The `.env` file r
 ```
 gagara-s3/
 ├── packages/
-│   ├── server/                    # Cloudflare Worker
-│   │   ├── src/
-│   │   │   ├── index.ts          # Worker entry point
-│   │   │   ├── handlers/
-│   │   │   │   └── query.ts      # POST /query handler
-│   │   │   ├── auth/
-│   │   │   │   └── token.ts      # Token validation middleware
-│   │   │   ├── catalog/
-│   │   │   │   └── loader.ts     # Load table catalog from .env/S3
-│   │   │   ├── engine/
-│   │   │   │   └── duckdb.ts     # DuckDB query executor
-│   │   │   └── formats/
-│   │   │       ├── json.ts       # JSON serializer
-│   │   │       └── csv.ts        # CSV serializer
-│   │   ├── wrangler.toml         # Cloudflare config
-│   │   ├── tsconfig.json
-│   │   └── package.json
+│   ├── server/                    # FastAPI service
+│   │   ├── app/
+│   │   │   ├── main.py           # FastAPI entry point
+│   │   │   ├── config.py         # Env loading + settings
+│   │   │   ├── auth.py           # Token validation dependency
+│   │   │   ├── catalog.py        # Load/cache catalog from S3
+│   │   │   ├── engine.py         # DuckDB query executor
+│   │   │   └── models.py         # Pydantic models
+│   │   ├── requirements.txt
+│   │   └── Dockerfile
 │   │
 │   ├── client/                    # TypeScript Client Library
 │   │   ├── src/
@@ -139,7 +153,7 @@ gagara-s3/
 
 ## Core Components
 
-### 1. Server (Cloudflare Worker)
+### 1. Server (FastAPI)
 
 **`POST /query?format=json|csv`**
 
@@ -209,7 +223,7 @@ Response (200):
 
 **`POST /refresh-catalog`**
 
-Refresh the cached catalog from S3 (without redeploying the Worker).
+Refresh the cached catalog from S3 (without redeploying the service).
 
 Headers:
 ```
@@ -289,17 +303,17 @@ console.log(catalog.tables)
 
 ## Development Workflow
 
-1. **Local setup**: `pnpm install`
+1. **Local setup**: `pnpm install` (client + UI)
 2. **Configuration**: Create `.env` with S3 credentials & catalog
-3. **Dev mode**: Test server + client locally
-4. **Build**: `pnpm build` (bundles Worker, client lib, UI)
-5. **Deploy**: `wrangler deploy` to Cloudflare
+3. **Dev mode (server)**: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` from `packages/server`
+4. **Build**: `pnpm build` (client lib + UI)
+5. **Deploy**: Build/push container from `packages/server/Dockerfile`
 
 ## Key Implementation Details
 
 - **Auth**: Every request validates `Authorization` header token against `GAGARA_S3_SERVICE_TOKEN` (from `.env`)
-- **Catalog**: Loaded from S3 on Worker startup and cached in memory; can be refreshed via `POST /refresh-catalog` without redeployment
-- **DuckDB**: Executes on the Cloudflare Worker; mounts S3 objects and runs queries in-process
+- **Catalog**: Loaded from S3 on service startup and cached in memory; can be refreshed via `POST /refresh-catalog` without redeployment
+- **DuckDB**: Executes inside the FastAPI container; mounts S3 objects and runs queries in-process
 - **Formats**: Result transformation (JSON/CSV) happens in handler based on `format` query parameter
 - **Error boundaries**: Parse/execution errors from DuckDB are surfaced as JSON with error code and message
 
