@@ -80,33 +80,38 @@
         <p v-if="!catalogLoading && catalogEntries.length === 0" class="muted">No tables available.</p>
 
         <div class="catalog-add">
-          <h3>{{ editingTableName ? "Edit table" : "Add table" }}</h3>
-          <label>
-            Name
-            <input v-model="newTableName" type="text" placeholder="table_name" />
-          </label>
-          <label>
-            Path
-            <div class="path-input">
-              <span class="path-prefix">/</span>
-              <input v-model="newTablePath" type="text" placeholder="path/to/file.csv" />
+          <button class="catalog-fold" type="button" @click="toggleAddTable">
+            <span>{{ editingTableName ? "Edit table" : "Add table" }}</span>
+            <span class="fold-indicator">{{ showAddTable ? "−" : "+" }}</span>
+          </button>
+          <div v-if="showAddTable" class="catalog-form">
+            <label>
+              Name
+              <input v-model="newTableName" type="text" placeholder="table_name" />
+            </label>
+            <label>
+              Path
+              <div class="path-input">
+                <span class="path-prefix">/</span>
+                <input v-model="newTablePath" type="text" placeholder="path/to/file.csv" />
+              </div>
+            </label>
+            <p class="hint">Relative to the configured bucket.</p>
+            <div v-if="hasTableInput" class="catalog-actions">
+              <button
+                class="primary"
+                data-testid="save-table"
+                @click="saveTable"
+                :disabled="addingTable || !clientReady || !canSaveTable"
+              >
+                {{ addingTable ? "Saving..." : editingTableName ? "Save changes" : "Save table" }}
+              </button>
+              <button class="ghost" @click="clearTableForm" :disabled="addingTable">
+                {{ editingTableName ? "Cancel" : "Clear" }}
+              </button>
             </div>
-          </label>
-          <p class="hint">Relative to the configured bucket.</p>
-          <div v-if="hasTableInput" class="catalog-actions">
-            <button
-              class="primary"
-              data-testid="save-table"
-              @click="saveTable"
-              :disabled="addingTable || !clientReady || !canSaveTable"
-            >
-              {{ addingTable ? "Saving..." : editingTableName ? "Save changes" : "Save table" }}
-            </button>
-            <button class="ghost" @click="clearTableForm" :disabled="addingTable">
-              {{ editingTableName ? "Cancel" : "Clear" }}
-            </button>
+            <p v-if="tableError" class="error">{{ tableError }}</p>
           </div>
-          <p v-if="tableError" class="error">{{ tableError }}</p>
         </div>
       </aside>
 
@@ -231,6 +236,7 @@ const newTablePath = ref("")
 const tableError = ref("")
 const addingTable = ref(false)
 const editingTableName = ref<string | null>(null)
+const showAddTable = ref(false)
 const hasTableInput = computed(() => {
   return Boolean(newTableName.value.trim() || newTablePath.value.trim())
 })
@@ -339,6 +345,7 @@ function editTable(table: { name: string; path: string }) {
   newTableName.value = table.name
   newTablePath.value = normalizePathForEdit(table.path)
   editingTableName.value = table.name
+  showAddTable.value = true
   tableError.value = ""
 }
 
@@ -355,6 +362,14 @@ function clearTableForm() {
   newTablePath.value = ""
   tableError.value = ""
   editingTableName.value = null
+  showAddTable.value = false
+}
+
+function toggleAddTable() {
+  showAddTable.value = !showAddTable.value
+  if (!showAddTable.value && !editingTableName.value) {
+    clearTableForm()
+  }
 }
 
 async function runQuery() {
@@ -842,9 +857,29 @@ h2 {
   gap: 10px;
 }
 
-.catalog-add h3 {
-  margin: 0;
-  font-size: 14px;
+.catalog-fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.catalog-fold .fold-indicator {
+  color: var(--ui-text-muted);
+  font-size: 16px;
+}
+
+.catalog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .catalog-add label {
