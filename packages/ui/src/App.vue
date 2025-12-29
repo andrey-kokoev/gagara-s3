@@ -143,7 +143,7 @@
                 >
                   Clear
                 </button>
-              </div>
+              
               <button
                 class="primary muted"
                 data-testid="run-query"
@@ -153,6 +153,7 @@
                 <span>{{ loading ? "Running..." : "Run query" }}</span>
                 <span v-if="!loading" class="shortcut">Ctrl+Enter</span>
               </button>
+              </div>
             </div>
           </div>
 
