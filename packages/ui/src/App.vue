@@ -124,6 +124,26 @@
                 <option value="json">json</option>
                 <option value="csv">csv</option>
               </select>
+              <div class="history-control">
+                <select v-model="selectedHistoryId" class="select history-select">
+                  <option value="">History</option>
+                  <option
+                    v-for="entry in queryHistory"
+                    :key="entry.id"
+                    :value="entry.id"
+                  >
+                    {{ formatHistoryLabel(entry) }}
+                  </option>
+                </select>
+                <button
+                  class="ghost"
+                  type="button"
+                  @click="clearHistory"
+                  :disabled="queryHistory.length === 0"
+                >
+                  Clear
+                </button>
+              </div>
               <button
                 class="primary muted"
                 data-testid="run-query"
@@ -193,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import { GagaraClient } from "@gagara-s3/client"
 import hljs from "highlight.js/lib/core"
 import sqlLang from "highlight.js/lib/languages/sql"
@@ -227,6 +247,11 @@ const rows = ref<Array<Record<string, unknown>>>([])
 const error = ref("")
 const loading = ref(false)
 const activeQuery = ref<AbortController | null>(null)
+const historyKey = "gagara_s3_query_history"
+const queryHistory = ref<Array<{ id: string; sql: string; format: "json" | "csv"; timestamp: number }>>(
+  []
+)
+const selectedHistoryId = ref("")
 
 const catalogEntries = ref<Array<{ name: string; path: string }>>([])
 const catalogLoading = ref(false)
@@ -242,6 +267,12 @@ const hasTableInput = computed(() => {
 })
 const canSaveTable = computed(() => {
   return Boolean(newTableName.value.trim() && newTablePath.value.trim())
+})
+const historySelection = computed(() => {
+  if (!selectedHistoryId.value) {
+    return null
+  }
+  return queryHistory.value.find((entry) => entry.id === selectedHistoryId.value) || null
 })
 
 const columns = computed(() => {
@@ -279,6 +310,57 @@ async function loadCatalog() {
   } finally {
     catalogLoading.value = false
   }
+}
+
+function loadHistory() {
+  try {
+    const stored = localStorage.getItem(historyKey)
+    if (!stored) {
+      queryHistory.value = []
+      return
+    }
+    const parsed = JSON.parse(stored)
+    if (Array.isArray(parsed)) {
+      queryHistory.value = parsed.filter((entry) => entry && typeof entry.sql === "string")
+    }
+  } catch {
+    queryHistory.value = []
+  }
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem(historyKey, JSON.stringify(queryHistory.value))
+  } catch {
+    return
+  }
+}
+
+function addHistoryEntry(entrySql: string, entryFormat: "json" | "csv") {
+  const normalized = entrySql.trim()
+  if (!normalized) {
+    return
+  }
+  const next = queryHistory.value.filter((entry) => entry.sql !== normalized)
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sql: normalized,
+    format: entryFormat,
+    timestamp: Date.now()
+  }
+  queryHistory.value = [entry, ...next].slice(0, 50)
+  saveHistory()
+}
+
+function formatHistoryLabel(entry: { sql: string; format: "json" | "csv"; timestamp: number }) {
+  const preview = entry.sql.replace(/\s+/g, " ").slice(0, 36)
+  return `${preview}${entry.sql.length > 36 ? "…" : ""} (${entry.format})`
+}
+
+function clearHistory() {
+  queryHistory.value = []
+  selectedHistoryId.value = ""
+  saveHistory()
 }
 
 async function saveTable() {
@@ -397,6 +479,7 @@ async function runQuery() {
       return
     }
     rows.value = data
+    addHistoryEntry(sql.value, format.value)
   } catch (err) {
     if ((err as Error).name === "AbortError") {
       if (activeQuery.value === controller) {
@@ -405,6 +488,7 @@ async function runQuery() {
       return
     }
     error.value = (err as Error).message || "Query failed"
+    addHistoryEntry(sql.value, format.value)
   } finally {
     if (activeQuery.value === controller) {
       loading.value = false
@@ -465,7 +549,16 @@ onMounted(() => {
   } catch {
     tokenInput.value = ""
   }
+  loadHistory()
   loadCatalog()
+})
+
+watch(historySelection, (entry) => {
+  if (!entry) {
+    return
+  }
+  sql.value = entry.sql
+  format.value = entry.format
 })
 
 function saveToken() {
@@ -653,6 +746,17 @@ h2 {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.history-control {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.history-select {
+  min-width: 180px;
 }
 
 .select {
