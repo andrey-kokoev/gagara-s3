@@ -124,26 +124,20 @@
                 <option value="json">json</option>
                 <option value="csv">csv</option>
               </select>
-              <div class="history-control">
-                <select v-model="selectedHistoryId" class="select history-select">
-                  <option value="">History</option>
-                  <option
-                    v-for="entry in queryHistory"
-                    :key="entry.id"
-                    :value="entry.id"
-                  >
-                    {{ formatHistoryLabel(entry) }}
-                  </option>
-                </select>
-                <button
-                  class="ghost"
-                  type="button"
-                  @click="clearHistory"
-                  :disabled="queryHistory.length === 0"
-                >
-                  Clear
-                </button>
-              
+              <button
+                class="ghost icon-button"
+                type="button"
+                @click="toggleHistoryPanel"
+                :disabled="queryHistory.length === 0"
+                aria-label="Toggle query history"
+                title="Query history"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 6a1 1 0 0 1 1 1v4.59l3.2 3.2-1.4 1.41L11 12.41V7a1 1 0 0 1 1-1zm0-4a10 10 0 1 1-7.07 2.93l1.41 1.41A8 8 0 1 0 12 4V2z"
+                  />
+                </svg>
+              </button>
               <button
                 class="primary muted"
                 data-testid="run-query"
@@ -153,7 +147,25 @@
                 <span>{{ loading ? "Running..." : "Run query" }}</span>
                 <span v-if="!loading" class="shortcut">Ctrl+Enter</span>
               </button>
-              </div>
+            </div>
+          </div>
+
+          <div v-if="showHistoryPanel" class="history-panel">
+            <div class="history-header">
+              <span>Recent queries</span>
+              <button class="ghost" type="button" @click="clearHistory">Clear</button>
+            </div>
+            <div class="history-list">
+              <button
+                v-for="entry in queryHistory"
+                :key="entry.id"
+                class="history-item"
+                type="button"
+                @click="applyHistoryEntry(entry)"
+              >
+                <span class="history-sql">{{ entry.sql }}</span>
+                <span class="history-meta">{{ entry.format }}</span>
+              </button>
             </div>
           </div>
 
@@ -214,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { GagaraClient } from "@gagara-s3/client"
 import hljs from "highlight.js/lib/core"
 import sqlLang from "highlight.js/lib/languages/sql"
@@ -252,7 +264,7 @@ const historyKey = "gagara_s3_query_history"
 const queryHistory = ref<Array<{ id: string; sql: string; format: "json" | "csv"; timestamp: number }>>(
   []
 )
-const selectedHistoryId = ref("")
+const showHistoryPanel = ref(false)
 
 const catalogEntries = ref<Array<{ name: string; path: string }>>([])
 const catalogLoading = ref(false)
@@ -269,13 +281,6 @@ const hasTableInput = computed(() => {
 const canSaveTable = computed(() => {
   return Boolean(newTableName.value.trim() && newTablePath.value.trim())
 })
-const historySelection = computed(() => {
-  if (!selectedHistoryId.value) {
-    return null
-  }
-  return queryHistory.value.find((entry) => entry.id === selectedHistoryId.value) || null
-})
-
 const columns = computed(() => {
   if (rows.value.length === 0) {
     return []
@@ -353,14 +358,9 @@ function addHistoryEntry(entrySql: string, entryFormat: "json" | "csv") {
   saveHistory()
 }
 
-function formatHistoryLabel(entry: { sql: string; format: "json" | "csv"; timestamp: number }) {
-  const preview = entry.sql.replace(/\s+/g, " ").slice(0, 36)
-  return `${preview}${entry.sql.length > 36 ? "…" : ""} (${entry.format})`
-}
-
 function clearHistory() {
   queryHistory.value = []
-  selectedHistoryId.value = ""
+  showHistoryPanel.value = false
   saveHistory()
 }
 
@@ -453,6 +453,15 @@ function toggleAddTable() {
   if (!showAddTable.value && !editingTableName.value) {
     clearTableForm()
   }
+}
+
+function toggleHistoryPanel() {
+  showHistoryPanel.value = !showHistoryPanel.value
+}
+
+function applyHistoryEntry(entry: { sql: string; format: "json" | "csv" }) {
+  sql.value = entry.sql
+  format.value = entry.format
 }
 
 async function runQuery() {
@@ -552,14 +561,6 @@ onMounted(() => {
   }
   loadHistory()
   loadCatalog()
-})
-
-watch(historySelection, (entry) => {
-  if (!entry) {
-    return
-  }
-  sql.value = entry.sql
-  format.value = entry.format
 })
 
 function saveToken() {
@@ -755,20 +756,6 @@ h2 {
   flex: 1 1 auto;
 }
 
-.history-control {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.history-select {
-  width: 100%;
-  min-width: 180px;
-  flex: 1 1 auto;
-}
-
 .select {
   padding: 8px 12px;
   border-radius: 10px;
@@ -822,6 +809,69 @@ h2 {
   color: var(--ui-text);
   cursor: pointer;
   height: 36px;
+  flex-shrink: 0;
+}
+
+.ghost.icon-button {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
+.history-panel {
+  width: 100%;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface-muted);
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  margin-bottom: 8px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(5 * 32px);
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  min-height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.history-sql {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+}
+
+.history-meta {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   flex-shrink: 0;
 }
 
