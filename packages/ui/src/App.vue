@@ -735,28 +735,36 @@ h1 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  gap: 16px;
+  flex-wrap: nowrap;
 }
 
 h2 {
   margin: 0;
   font-size: 18px;
+  white-space: nowrap;
 }
 
 .controls {
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .history-control {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .history-select {
+  width: 100%;
   min-width: 180px;
+  flex: 1 1 auto;
 }
 
 .select {
@@ -766,6 +774,9 @@ h2 {
   background: var(--ui-surface-muted);
   color: var(--ui-text);
   font-family: "IBM Plex Mono", monospace;
+  height: 36px;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .primary {
@@ -779,6 +790,8 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .primary:disabled {
@@ -806,6 +819,8 @@ h2 {
   background: transparent;
   color: var(--ui-text);
   cursor: pointer;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .editor-shell {
