@@ -751,6 +751,7 @@ h2 {
   align-items: center;
   flex-wrap: nowrap;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .history-control {
