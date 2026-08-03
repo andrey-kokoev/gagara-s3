@@ -52,6 +52,18 @@ export function resolveCatalogKey(defaultCatalog: string) {
   return `${dir}/${defaultCatalog.replace(/^\/+/, "")}`
 }
 
+export function assertCatalogMutationTargetIsSafe() {
+  const serverUrl = requireEnv("GAGARA_S3_SERVER_URL")
+  const hostname = new URL(serverUrl).hostname.toLowerCase()
+  const productionHost = hostname === "gagara-s3.t895.sonar.cloud"
+
+  if (productionHost) {
+    throw new Error(
+      "Catalog-mutating tests cannot target production. Use an isolated test service/catalog.",
+    )
+  }
+}
+
 function streamToString(stream: unknown): Promise<string> {
   if (!(stream instanceof Readable)) {
     return Promise.resolve("")

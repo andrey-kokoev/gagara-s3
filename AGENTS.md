@@ -32,6 +32,9 @@ not a repository file.
 
 - The catalog is an S3 JSON object selected by `GAGARA_S3_DEFAULT_CATALOG` and
   optionally prefixed by `GAGARA_S3_DIR`; it is not repository data.
+- Production-owned bindings are declared through
+  `GAGARA_S3_REQUIRED_TABLES_JSON` and reconciled into the persisted catalog at
+  startup and refresh. Required bindings take precedence over mutable entries.
 - A production empty catalog is an incident when downstream consumers require
   tables such as `classes`. `/health` success does not establish catalog
   correctness.
@@ -58,3 +61,5 @@ therefore does not prove that the catalog was never overwritten.
 - Preserve upstream DuckDB/catalog errors in diagnostics.
 - Use bounded logs and bounded test output. Add regression coverage for any
   discovered state transition or mutation path.
+- Catalog-mutating tests must use an isolated service/catalog and must never
+  target `gagara-s3.t895.sonar.cloud`.

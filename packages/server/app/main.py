@@ -49,6 +49,11 @@ async def auth_error_handler(_request: Request, exc: auth.AuthError) -> JSONResp
     return _error_response(exc.status_code, "AUTH_ERROR", exc.message)
 
 
+@app.get("/health")
+async def health_check():
+    return JSONResponse({"status": "ok"})
+
+
 @app.post("/query")
 async def run_query(
     request: QueryRequest,

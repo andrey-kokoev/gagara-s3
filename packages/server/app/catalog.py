@@ -39,6 +39,44 @@ def _parse_catalog(payload: str) -> dict[str, str]:
     return {str(key): str(value) for key, value in tables.items()}
 
 
+def _normalize_path(path: str) -> str:
+    normalized = path.strip()
+    if normalized.startswith("s3://"):
+        return normalized
+    return f"s3://{config.S3_BUCKET}/{normalized.lstrip('/')}"
+
+
+def _required_tables() -> dict[str, str]:
+    raw = config.REQUIRED_TABLES_JSON
+    if not raw:
+        return {}
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise CatalogError("Malformed GAGARA_S3_REQUIRED_TABLES_JSON", exc)
+
+    if isinstance(data, dict) and "tables" in data:
+        data = data["tables"]
+    if not isinstance(data, dict):
+        raise CatalogError("GAGARA_S3_REQUIRED_TABLES_JSON must be a JSON object")
+
+    required: dict[str, str] = {}
+    for key, value in data.items():
+        name = str(key).strip()
+        path = str(value).strip()
+        if not name or not path:
+            raise CatalogError("Required table names and paths must be non-empty")
+        required[name] = _normalize_path(path)
+    return required
+
+
+def _reconcile_required_tables(tables: dict[str, str]) -> dict[str, str]:
+    reconciled = dict(tables)
+    reconciled.update(_required_tables())
+    return reconciled
+
+
 def _resolve_catalog_key() -> str:
     if not config.DEFAULT_CATALOG:
         return ""
@@ -51,20 +89,7 @@ def _create_empty_catalog() -> dict[str, str]:
     key = _resolve_catalog_key()
     if not key:
         raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
-    payload = json.dumps({"tables": {}}, indent=2)
-    _s3_client().put_object(
-        Bucket=config.S3_BUCKET,
-        Key=key,
-        Body=payload.encode("utf-8"),
-        ContentType="application/json",
-    )
-    return {}
-
-
-def _save_catalog(tables: dict[str, str]) -> None:
-    key = _resolve_catalog_key()
-    if not key:
-        raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
+    tables = _reconcile_required_tables({})
     payload = json.dumps({"tables": tables}, indent=2)
     _s3_client().put_object(
         Bucket=config.S3_BUCKET,
@@ -72,6 +97,22 @@ def _save_catalog(tables: dict[str, str]) -> None:
         Body=payload.encode("utf-8"),
         ContentType="application/json",
     )
+    return tables
+
+
+def _save_catalog(tables: dict[str, str]) -> dict[str, str]:
+    key = _resolve_catalog_key()
+    if not key:
+        raise CatalogError("GAGARA_S3_DEFAULT_CATALOG is not set")
+    reconciled = _reconcile_required_tables(tables)
+    payload = json.dumps({"tables": reconciled}, indent=2)
+    _s3_client().put_object(
+        Bucket=config.S3_BUCKET,
+        Key=key,
+        Body=payload.encode("utf-8"),
+        ContentType="application/json",
+    )
+    return reconciled
 
 
 def _load_catalog() -> dict[str, str]:
@@ -98,7 +139,11 @@ def _load_catalog() -> dict[str, str]:
         raise CatalogError("Catalog object has no body")
 
     raw = body.read().decode("utf-8")
-    return _parse_catalog(raw)
+    tables = _parse_catalog(raw)
+    reconciled = _reconcile_required_tables(tables)
+    if reconciled != tables:
+        return _save_catalog(reconciled)
+    return reconciled
 
 
 def get_catalog() -> dict[str, str]:
@@ -120,13 +165,10 @@ def add_table(name: str, path: str) -> dict[str, str]:
 
     global _cached_catalog
     tables = _load_catalog()
-    normalized = path.strip()
-    if not normalized.startswith("s3://"):
-        normalized = f"s3://{config.S3_BUCKET}/{normalized.lstrip('/')}"
+    normalized = _normalize_path(path)
     tables[str(name)] = normalized
-    _save_catalog(tables)
-    _cached_catalog = tables
-    return tables
+    _cached_catalog = _save_catalog(tables)
+    return _cached_catalog
 
 
 def delete_table(name: str) -> dict[str, str]:
@@ -136,6 +178,5 @@ def delete_table(name: str) -> dict[str, str]:
     global _cached_catalog
     tables = _load_catalog()
     tables.pop(str(name), None)
-    _save_catalog(tables)
-    _cached_catalog = tables
-    return tables
+    _cached_catalog = _save_catalog(tables)
+    return _cached_catalog
